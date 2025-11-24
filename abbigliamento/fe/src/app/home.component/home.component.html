@@ -1,0 +1,21 @@
+<div class="row">
+  <div class="col-12">
+    <h2>Categorie abiti</h2>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-4" *ngFor="let cat of categorie">
+    <div class="card mb-3">
+      <div class="card-body text-center">
+        <h5 class="card-title">{{ cat.descrizione }}</h5>
+        <a
+          class="btn btn-primary"
+          [routerLink]="['/abiti', cat.codice]"
+        >
+          Visualizza {{ cat.descrizione }}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

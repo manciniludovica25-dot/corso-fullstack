@@ -1,0 +1,32 @@
+<h2 class="mb-4 text-capitalize">
+  Veicoli categoria: {{ categoria }}
+</h2>
+
+<div *ngIf="loading">Caricamento...</div>
+
+<div *ngIf="error" class="alert alert-danger">
+  {{ error }}
+</div>
+
+<div class="row" *ngIf="!loading && !error && veicoli.length > 0; else noVeicoli">
+  <div class="col-md-4" *ngFor="let v of veicoli">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">
+          {{ v.marca }} {{ v.modello }}
+        </h5>
+        <p class="card-text">
+          <strong>Targa:</strong> {{ v.codiceImmatricolazione }}<br />
+          <strong>Immatricolazione:</strong> {{ v.dataImmatricolazione }}<br />
+          <strong>Prezzo:</strong> {{ v.prezzo | currency:'EUR':'symbol':'1.0-0' }}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #noVeicoli>
+  <p *ngIf="!loading && !error">
+    Nessun veicolo trovato per questa categoria.
+  </p>
+</ng-template>

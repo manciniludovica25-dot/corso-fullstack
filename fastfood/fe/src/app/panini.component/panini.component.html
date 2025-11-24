@@ -1,0 +1,20 @@
+<div class="container mt-4">
+  <h2>Panini</h2>
+
+  <div class="row">
+    <div class="col-md-4 mb-3" *ngFor="let p of prodotti">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">{{ p.nome }}</h5>
+          <p class="card-text">
+            {{ p.immagine }}
+          </p>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+          <span class="fw-bold">{{ p.prezzo | currency:'EUR':'symbol' }}</span>
+          <span class="badge bg-primary">{{ p.categoria }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

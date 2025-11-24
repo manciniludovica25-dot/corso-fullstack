@@ -1,0 +1,31 @@
+<h2 class="mb-4">
+  Abiti per categoria: {{ tipo | uppercase }}
+</h2>
+
+<div *ngIf="loading">Caricamento...</div>
+
+<div *ngIf="error" class="alert alert-danger">
+  {{ error }}
+</div>
+
+<div class="row" *ngIf="!loading && !error && abiti.length > 0; else noAbiti">
+  <div class="col-md-4" *ngFor="let a of abiti">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">
+          {{ a.marca }} - {{ a.taglia }}
+        </h5>
+        <p class="card-text">
+          <strong>Tipo:</strong> {{ a.tipo | uppercase }}<br />
+          <strong>Prezzo:</strong> {{ a.prezzo | currency:'EUR':'symbol':'1.0-2' }}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #noAbiti>
+  <p *ngIf="!loading && !error">
+    Nessun abito trovato per questa categoria.
+  </p>
+</ng-template>

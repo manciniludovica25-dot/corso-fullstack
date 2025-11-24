@@ -1,0 +1,16 @@
+<div>
+  <h2>Elenco Velocisti</h2>
+
+  <!-- Input filtro età -->
+  <input type="number" [(ngModel)]="etaFiltro" placeholder="Filtra per età">
+  <button (click)="filtra()">Filtra</button>
+
+  <p *ngIf="velocisti.length === 0">Nessun velocista trovato</p>
+
+  <!-- Lista velocisti -->
+  <ul>
+    <li *ngFor="let v of velocisti">
+      {{ v.nominativo }} - {{ v.eta }} anni - Record: {{ v.record }} sec
+    </li>
+  </ul>
+</div>

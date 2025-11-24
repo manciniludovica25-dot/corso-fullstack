@@ -1,0 +1,16 @@
+<div>
+  <h2>Aggiungi Velocista</h2>
+
+  <form (ngSubmit)="salva()" #f="ngForm">
+    <label>Nominativo:</label>
+    <input type="text" [(ngModel)]="nuovo.nominativo" name="nominativo" required />
+
+    <label>Età:</label>
+    <input type="number" [(ngModel)]="nuovo.eta" name="eta" required />
+
+    <label>Record (sec):</label>
+    <input type="number" [(ngModel)]="nuovo.record" name="record" required />
+
+    <button type="submit" [disabled]="f.invalid">Salva</button>
+  </form>
+</div>
