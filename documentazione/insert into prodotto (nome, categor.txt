@@ -1,0 +1,2 @@
+insert into prodotto (nome, categoria, prezzo, immagine) values 
+('panino al pollo', 'panino', 13.5, 'www.img.com');

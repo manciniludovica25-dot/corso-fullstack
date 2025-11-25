@@ -1,0 +1,23 @@
+ng new abbigliamento-app --no-standalone
+
+npm install
+
+npm install bootstrap
+
+ng generate component panini.component --no-standalone
+
+ng generate interface models/Panino --type=model
+
+ng generate service services/paniniservice
+
+
+//installare bootstrap
+nel file angular.json aggiungi 
+
+"styles": [ 
+"node_modules/bootstrap/dist/css/bootstrap.min.css", 
+"src/styles.css" 
+], 
+"scripts": [ 
+"node_modules/bootstrap/dist/js/bootstrap.bundle.min.js" 
+] 
