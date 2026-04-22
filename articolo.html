@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articoli Blog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+            color: #1a1a1a;
+        }
+
+        .contenitore {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #1878af;
+            margin-bottom: 18px;
+        }
+
+        /* Filtro */
+        .barra-filtro {
+            background: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px #0001;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .barra-filtro select,
+        .barra-filtro button {
+            padding: 7px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .barra-filtro button {
+            background: #1878af;
+            color: #fff;
+            border-color: #1878af;
+        }
+
+        .barra-filtro button:hover {
+            background: #125a85;
+        }
+
+        /* Post */
+        .scheda-post {
+            background: #fff;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px #0001;
+            border-left: 4px solid #1878af;
+            margin-bottom: 12px;
+        }
+
+        .scheda-post h3 {
+            color: #1878af;
+            margin-bottom: 6px;
+            font-size: 15px;
+        }
+
+        .scheda-post p {
+            color: #555;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .scheda-post button {
+            margin-top: 8px;
+            padding: 5px 11px;
+            background: #1878af;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* Paginazione */
+        .pannello-paginazione {
+            background: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px #0001;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 4px;
+        }
+
+        .pannello-paginazione select,
+        .pannello-paginazione button {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .pannello-paginazione button {
+            background: #1878af;
+            color: #fff;
+            border-color: #1878af;
+        }
+
+        .pannello-paginazione button:disabled {
+            background: #bbb;
+            border-color: #bbb;
+        }
+
+        /* Modale */
+        .sfondo-modale {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #0009;
+            z-index: 100;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sfondo-modale.visibile {
+            display: block;
+        }
+
+        .finestra-modale {
+            background: #fff;
+            border-radius: 10px;
+            max-width: 680px;
+            margin: 40px auto;
+            padding: 28px;
+            position: relative;
+        }
+
+        .finestra-modale .pulsante-chiudi {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 26px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .finestra-modale h2 {
+            color: #1878af;
+            margin-bottom: 12px;
+            padding-right: 24px;
+            font-size: 18px;
+        }
+
+        .finestra-modale .corpo-post {
+            background: #f7f7f7;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .finestra-modale h3 {
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+
+        .singolo-commento {
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+            font-size: 13px;
+        }
+
+        .singolo-commento strong {
+            display: block;
+        }
+
+        .singolo-commento small {
+            color: #888;
+        }
+
+        /* Stati */
+        .messaggio-info {
+            text-align: center;
+            padding: 30px;
+            color: #777;
+        }
+
+        .messaggio-errore {
+            background: #fee;
+            color: #c00;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="contenitore">
+        <h1>📝 Articoli</h1>
+
+        <div class="barra-filtro">
+            <label>Utente:</label>
+            <select id="selettoreUtente">
+                <option value="">Tutti</option>
+            </select>
+            <button id="pulsanteFiltra">Filtra</button>
+            <span id="etichettaUtenteFiltrato" style="margin-left:auto;color:#1878af;font-weight:500"></span>
+        </div>
+
+        <div id="areaMessaggi"></div>
+        <div id="contenitorePost"></div>
+        <div id="pannelloPaginazione" class="pannello-paginazione"></div>
+    </div>
+
+    <div id="sfondoModale" class="sfondo-modale">
+        <div class="finestra-modale">
+            <span class="pulsante-chiudi" id="pulsanteChiudiModale">&times;</span>
+            <div id="contenutoModale"></div>
+        </div>
+    </div>
+
+    <script>
+        const INDIRIZZO_API = "https://jsonplaceholder.typicode.com";
+        
+        // Stato dell'applicazione
+        const statoApplicazione = { 
+            mappaUtenti: new Map(),  // id -> {name, email, ...}
+            paginaCorrente: 1, 
+            elementiPerPagina: 10,
+            idUtenteFiltrato: null 
+        };
+
+        // Helper per selezionare elementi DOM
+        const seleziona = id => document.getElementById(id);
+
+        // --- Gestione messaggi UI ---
+        const impostaMessaggio = (html) => seleziona("areaMessaggi").innerHTML = html;
+        const mostraCaricamento = () => impostaMessaggio('<p class="messaggio-info">⏳ Caricamento in corso...</p>');
+        const nascondiMessaggio = () => impostaMessaggio("");
+
+        // --- Funzione generica per chiamate API ---
+        const recuperaDati = async url => {
+            const risposta = await fetch(url);
+            if (!risposta.ok) throw new Error("Errore di rete: " + url);
+            return risposta.json();
+        };
+
+        // --- Inizializzazione: carica tutti gli utenti ---
+        async function inizializza() {
+            mostraCaricamento();
+            const elencoUtenti = await recuperaDati(`${INDIRIZZO_API}/users`);
+            
+            // Popola la mappa degli utenti
+            elencoUtenti.forEach(utente => statoApplicazione.mappaUtenti.set(utente.id, utente));
+            
+            // Popola il menu a tendina
+            seleziona("selettoreUtente").innerHTML = '<option value="">Tutti</option>' +
+                elencoUtenti.map(utente => `<option value="${utente.id}">${utente.name}</option>`).join("");
+            
+            caricaPost();
+        }
+
+        // --- Carica e visualizza i post in base allo stato corrente ---
+        async function caricaPost() {
+            mostraCaricamento();
+            
+            // Costruzione parametri query ( senza userId, con userId)
+            const parametriQuery = new URLSearchParams({ 
+                _page: statoApplicazione.paginaCorrente, 
+                _limit: statoApplicazione.elementiPerPagina 
+            });
+            
+            if (statoApplicazione.idUtenteFiltrato) {
+                parametriQuery.append("userId", statoApplicazione.idUtenteFiltrato);
+            }
+
+            const elencoPost = await recuperaDati(`${INDIRIZZO_API}/posts?${parametriQuery}`);
+            nascondiMessaggio();
+
+            // Se nessun post trovato
+            if (!elencoPost.length) {
+                seleziona("contenitorePost").innerHTML = '<p class="messaggio-info">📭 Nessun articolo trovato.</p>';
+                seleziona("pannelloPaginazione").innerHTML = "";
+                return;
+            }
+
+            // Costruzione HTML dei post
+            seleziona("contenitorePost").innerHTML = elencoPost.map(post => {
+                const autore = statoApplicazione.mappaUtenti.get(post.userId);
+                const nomeAutore = autore ? autore.name : `Utente #${post.userId}`;
+                const anteprima = post.body.slice(0, 20) + (post.body.length > 20 ? "…" : "");
+                
+                return `
+                    <div class="scheda-post">
+                        <h3>${post.title}</h3>
+                        <p>👤 <strong>${nomeAutore}</strong></p>
+                        <p>📄 ${anteprima}</p>
+                        <button data-id="${post.id}">🔍 Dettagli</button>
+                    </div>
+                `;
+            }).join("");
+
+            // Aggiorna etichetta con nome utente filtrato
+            seleziona("etichettaUtenteFiltrato").textContent = 
+                statoApplicazione.idUtenteFiltrato && statoApplicazione.mappaUtenti.has(statoApplicazione.idUtenteFiltrato)
+                ? `📌 ${statoApplicazione.mappaUtenti.get(statoApplicazione.idUtenteFiltrato).name}` 
+                : "";
+
+            costruisciPagina();
+        }
+
+        //  Costruzione controlli di paginazione
+        function costruisciPagina() {
+            const totalePagine = Math.ceil(100 / statoApplicazione.elementiPerPagina);
+            
+            seleziona("pannelloPaginazione").innerHTML = `
+                <select id="selettoreLimite">
+                    ${[5, 10, 15, 20, 25].map(numero => 
+                        `<option ${numero === statoApplicazione.elementiPerPagina ? "selected" : ""}>${numero} per pagina</option>`
+                    ).join("")}
+                </select>
+                <button id="pulsantePrecedente" ${statoApplicazione.paginaCorrente === 1 ? "disabled" : ""}>← Precedente</button>
+                <span>Pagina ${statoApplicazione.paginaCorrente} di ${totalePagine}</span>
+                <button id="pulsanteSuccessivo" ${statoApplicazione.paginaCorrente === totalePagine ? "disabled" : ""}>Successiva →</button>
+            `;
+            
+            // Event listeners per la paginazione
+            seleziona("selettoreLimite").onchange = evento => { 
+                statoApplicazione.elementiPerPagina = parseInt(evento.target.value); 
+                statoApplicazione.paginaCorrente = 1; 
+                caricaPost(); 
+            };
+            
+            seleziona("pulsantePrecedente").onclick = () => { 
+                statoApplicazione.paginaCorrente--; 
+                caricaPost(); 
+            };
+            
+            seleziona("pulsanteSuccessivo").onclick = () => { 
+                statoApplicazione.paginaCorrente++; 
+                caricaPost(); 
+            };
+        }
+
+        //  Visualizzazione dettaglio post in modale 
+        async function mostraDettaglioPost(idPost) {
+            seleziona("sfondoModale").classList.add("visibile");
+            seleziona("contenutoModale").innerHTML = '<p class="messaggio-info">⏳ Caricamento dettaglio...</p>';
+
+            // Recupero parallelo di post e commenti
+            const [postSingolo, elencoCommenti] = await Promise.all([
+                recuperaDati(`${INDIRIZZO_API}/posts/${idPost}`),
+                recuperaDati(`${INDIRIZZO_API}/comments?postId=${idPost}`)
+            ]);
+
+            const autore = statoApplicazione.mappaUtenti.get(postSingolo.userId);
+            const infoAutore = autore ? `${autore.name} (${autore.email})` : `Utente #${postSingolo.userId}`;
+
+            seleziona("contenutoModale").innerHTML = `
+                <h2>${postSingolo.title}</h2>
+                <p>👤 <strong>${infoAutore}</strong></p>
+                <div class="corpo-post">${postSingolo.body}</div>
+                <h3>💬 Commenti (${elencoCommenti.length})</h3>
+                ${elencoCommenti.map(commento => `
+                    <div class="singolo-commento">
+                        <strong>${commento.name}</strong>
+                        <small>${commento.email}</small>
+                        <p>${commento.body}</p>
+                    </div>
+                `).join("")}
+            `;
+        }
+
+        //  Event Listeners per filtro e dettagli
+        seleziona("pulsanteFiltra").onclick = () => {
+            const valoreSelezionato = seleziona("selettoreUtente").value;
+            statoApplicazione.idUtenteFiltrato = valoreSelezionato ? parseInt(valoreSelezionato) : null;
+            statoApplicazione.paginaCorrente = 1;
+            caricaPost();
+        };
+
+        // Delega eventi per i pulsanti "Dettagli" nei post
+        seleziona("contenitorePost").addEventListener("click", evento => {
+            const pulsante = evento.target.closest("button[data-id]");
+            if (pulsante) mostraDettaglioPost(pulsante.dataset.id);
+        });
+
+        // Chiusura modale
+        const chiudiModale = () => seleziona("sfondoModale").classList.remove("visibile");
+        seleziona("pulsanteChiudiModale").onclick = chiudiModale;
+        seleziona("sfondoModale").onclick = evento => { 
+            if (evento.target === seleziona("sfondoModale")) chiudiModale(); 
+        };
+
+        // Avvio applicazione
+        inizializza();
+    </script>
+</body>
+
+</html>
