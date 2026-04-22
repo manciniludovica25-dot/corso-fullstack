@@ -1,0 +1,361 @@
+<!-- 
+Partendo dall’esercizio della giornata precedente sostituire le chiamate manuali alla funzione per ricevere la data in italiano 
+con un’interfaccia grafica in cui l’utente compila in un form i campi anno, mese e anno e riceve in un apposito campo sottostante in risposta la data richiesta in italiano
+oppure un errore. Aggiungere la validazione dei dati ricevuti dal form con annessi eventuali errori. In caso di errore il testo deve essere rosso e in grassetto, mentre in
+caso di risposta corretta deve essere in verde scuro. Tutti i campi devono essere obbligatori e di default ci deve essere la data odierna del giorno in cui è stata aperta 
+la pagina. Ricordatevi di prevenire il comportamento di default dei form nei browser per evitare risultati inaspettati come il ricaricamento della pagina. -->
+
+<!doctype html>
+<html lang="it">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data in italiano</title>
+    <style>
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            padding: 24px;
+        }
+
+        form {
+            display: grid;
+            gap: 12px;
+            max-width: 300px;
+        }
+
+        .row {
+            display: grid;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Messaggi */
+        #result {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        /* verde scuro */
+        .ok {
+            color: #0b3d0b;
+            font-weight: 600;
+        }
+
+        /* rosso + grassetto */
+        .error {
+            color: #b00020;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Data in italiano</h1>
+
+    <form id="dateForm" novalidate>
+        <div class="row">
+            <label for="day">Giorno</label>
+            <input id="day" name="day" type="text" min="1" max="31" required />
+        </div>
+
+        <div class="row">
+            <label for="month">Mese</label>
+            <input id="month" name="month" type="text" min="1" max="12" required />
+        </div>
+
+        <div class="row">
+            <label for="year">Anno</label>
+            <input id="year" name="year" type="text" min="1" required />
+        </div>
+
+        <button type="submit">Converti</button>
+        <button type="button" id="resetBtn">Reset</button>
+    </form>
+
+    <p id="result">Inserisci una data e premi “Converti”.</p>
+
+    <script>
+
+        const form = document.getElementById("dateForm");
+        const dayInput = document.getElementById("day");
+        const monthInput = document.getElementById("month");
+        const yearInput = document.getElementById("year");
+        const result = document.getElementById("result");
+
+        // Imposta di default la data odierna (il giorno in cui apri la pagina)
+        const today = new Date();
+        dayInput.value = String(today.getDate());
+        monthInput.value = String(today.getMonth() + 1); // mesi 0-11
+        yearInput.value = String(today.getFullYear());
+
+        function setMessageOk(text) {
+            result.classList.remove("error");
+            result.classList.add("ok");
+            result.textContent = text;
+        }
+
+        function setMessageError(text) {
+            result.classList.remove("ok");
+            result.classList.add("error");
+            result.textContent = text;
+        }
+
+        function nameMonth(month) {
+
+            const months = [
+                {
+                    id: 1,
+                    name: "Gennaio",
+                    translate: { it: "Gennaio" },
+                    daysOfMonth: 31,
+                    holidays: [1, 6],
+                },
+                {
+                    id: 2,
+                    name: "Febbraio",
+                    translate: { it: "Febbraio" },
+                    daysOfMonth: 28,
+                    holidays: [],
+                },
+                {
+                    id: 3,
+                    name: "Marzo",
+                    translate: { it: "Marzo" },
+                    daysOfMonth: 31,
+                    holidays: [],
+                },
+                {
+                    id: 4,
+                    name: "Aprile",
+                    translate: { it: "Aprile" },
+                    daysOfMonth: 30,
+                    holidays: [25],
+                },
+                {
+                    id: 5,
+                    name: "Maggio",
+                    translate: { it: "Maggio" },
+                    daysOfMonth: 31,
+                    holidays: [1],
+                },
+                {
+                    id: 6,
+                    name: "Giugno",
+                    translate: { it: "Giugno" },
+                    daysOfMonth: 30,
+                    holidays: [2],
+                },
+                {
+                    id: 7,
+                    name: "Luglio",
+                    translate: { it: "Luglio" },
+                    daysOfMonth: 31,
+                    holidays: [],
+                },
+                {
+                    id: 8,
+                    name: "Agosto",
+                    translate: { it: "Agosto" },
+                    daysOfMonth: 31,
+                    holidays: [15],
+                },
+                {
+                    id: 9,
+                    name: "Settembre",
+                    translate: { it: "Settembre" },
+                    daysOfMonth: 30,
+                    holidays: [],
+                },
+                {
+                    id: 10,
+                    name: "Ottobre",
+                    translate: { it: "Ottobre" },
+                    daysOfMonth: 31,
+                    holidays: [],
+                },
+                {
+                    id: 11,
+                    name: "Novembre",
+                    translate: { it: "Novembre" },
+                    daysOfMonth: 30,
+                    holidays: [1],
+                },
+                {
+                    id: 12,
+                    name: "Dicembre",
+                    translate: { it: "Dicembre" },
+                    daysOfMonth: 31,
+                    holidays: [8, 25, 26],
+                },
+            ];
+            return months[month - 1];
+        }
+
+
+
+        function isLeapYear(year) {
+            return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+        }
+
+        function calcolaLunediAngelo(anno) {
+            // Algoritmo di Butcher-Meeus per calcolare la Pasqua
+            const a = anno % 19;
+            const b = Math.floor(anno / 100);
+            const c = anno % 100;
+            const d = Math.floor(b / 4);
+            const e = b % 4;
+            const f = Math.floor((b + 8) / 25);
+            const g = Math.floor((b - f + 1) / 3);
+            const h = (19 * a + b - d - g + 15) % 30;
+            const i = Math.floor(c / 4);
+            const k = c % 4;
+            const l = (32 + 2 * e + 2 * i - h - k) % 7;
+            const m = Math.floor((a + 11 * h + 22 * l) / 451);
+            const mese = Math.floor((h + l - 7 * m + 114) / 31);
+            const giorno = ((h + l - 7 * m + 114) % 31) + 1;
+
+            // Data della Pasqua
+            const pasqua = new Date(anno, mese - 1, giorno);
+
+            // Lunedì dell'Angelo è il giorno dopo la Pasqua
+            const lunediAngelo = new Date(pasqua);
+            lunediAngelo.setDate(pasqua.getDate() + 1);
+
+            return lunediAngelo;
+        }
+
+
+        function italianDate(year, month, day) {
+            const today = new Date();
+            if (!year) year = today.getFullYear();
+            if (!month) month = today.getMonth() + 1;
+            if (!day) day = today.getDate();
+
+            year = Number(year);
+            month = Number(month);
+            day = Number(day);
+
+            if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+            if (year < 1 || month < 1 || month > 12) return null;
+
+            const infoMonth = updateMonth(year, month);
+            if (!infoMonth) return null;
+
+            if (day < 1 || day > infoMonth.daysOfMonth) return null;
+            const allDaysOfWeek = [
+                "Domenica",
+                "Lunedì",
+                "Martedì",
+                "Mercoledì",
+                "Giovedì",
+                "Venerdì",
+                "Sabato",
+            ];
+
+            const data = new Date(year, month - 1, day);
+            const dayOfWeek = data.getDay();
+
+            // base della data formattata
+            let result = `${day} ${infoMonth.translate.it} ${year} (${allDaysOfWeek[dayOfWeek]})`;
+
+            // aggiunta festivo / weekend
+            if (infoMonth.holidays.includes(day)) {
+                result = `${result} — è un giorno festivo`;
+            } else if (dayOfWeek === 0 || dayOfWeek === 6) {
+                result = `${result} — è un fine settimana`;
+            }
+
+            return result;
+        }
+
+        function updateMonth(year, month) {
+            year = Number(year);
+            month = Number(month);
+            const monthData = nameMonth(month);
+
+            //Creiamo una copia dell'oggetto con lo spread operator per evitare di modificare l'oggetto originale
+            //Creiamo una copia dell'array holidays con lo spread operator perchè è un array
+            const updatedMonth = { ...monthData, holidays: [...monthData.holidays] };
+
+            if (month === 2 && isLeapYear(year)) {
+                updatedMonth.daysOfMonth = 29;
+            }
+
+            if (month === 3 || month === 4) {
+                const easterMonday = calcolaLunediAngelo(year);
+                if (easterMonday.getMonth() + 1 === month) {
+                    updatedMonth.holidays.push(easterMonday.getDate());
+                }
+            }
+            return updatedMonth;
+        }
+
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            // 1) i campi devono essere tutti compilati (obbligatori)
+            if (!dayInput.value || !monthInput.value || !yearInput.value) {
+                setMessageError("Errore: tutti i campi (giorno, mese, anno) sono obbligatori.");
+                return;
+            }
+
+            // 2) numerici (se vuoi permettere lettere in input, questo controllo serve)
+            const anno = Number(yearInput.value);
+            const mese = Number(monthInput.value);
+            const giorno = Number(dayInput.value);
+
+            if (Number.isNaN(anno) || Number.isNaN(mese) || Number.isNaN(giorno)) {
+                setMessageError("Errore: tutti i campi devono essere numerici.");
+                return;
+            }
+
+            // 3) calcolo + validazione data (range, giorni del mese, bisestile, ecc.)
+            const out = italianDate(anno, mese, giorno);
+
+            if (!out) {
+                setMessageError("Errore: data non valida. Controlla giorno/mese/anno.");
+                return;
+            }
+
+            // 4) ok
+            setMessageOk(out);
+        });
+
+        //Extra: aggiungere un pulsante di reset che reimposta la data a quella odierna
+        const resetBtn = document.getElementById("resetBtn");
+
+        function setToday() {
+            const now = new Date();
+            dayInput.value = String(now.getDate());
+            monthInput.value = String(now.getMonth() + 1);
+            yearInput.value = String(now.getFullYear());
+        }
+
+        resetBtn.addEventListener("click", () => {
+            setToday();
+            setMessageOk("Data reimpostata a quella odierna.");
+        });
+
+
+
+    </script>
+</body>
+
+</html>

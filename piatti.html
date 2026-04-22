@@ -1,0 +1,176 @@
+<!-- Generare una pagina di gestione degli ordini di un ristorante. Su un interfaccia in cui è possibile scegliere tra più piatti 
+tramite select e un campo input di tipo testo con il nome del cliente la richiesta viene inviata ad una funzione asincrona che sceglie 
+un numero casuale tra 1 e 5 per il tempo in cui l’ordine è in stato “inviato”, al termine di questo tempo viene generato un altro numero 
+casuale da 1 a 10 in cui lo stato è in preparazione. Al suo termine viene causato un terzo numero casuale da 1 oppure 10 dove se il 
+numero è almeno 6 l’ordine è pronto, in caso contrario è fallito e l’utente può reinviarlo, rifacendo partire la procedura. Per ogni rinvio
+ la possibile di riuscita aumenta di uno fino ad un massimo di 4 volte quando sarà 10/10 (successo garantito). 
+ 
+ [
+
+  {
+
+     “piatto”: “pasta al sugo”,
+
+      “cliente”: “Mario Rossi”,
+
+      “stato”: “inviato”,
+
+      “rinvii”: 0,
+
+  },
+
+  ...
+
+]-->
+
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ordini Ristorante</title>
+    <style>
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            padding: 24px;
+        }
+
+        form {
+            display: grid;
+            gap: 12px;
+            max-width: 300px;
+        }
+
+        .row {
+            display: grid;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #piatti {
+            padding: 10px;
+            font-size: 16px;
+        }
+        
+        .stato-inviato { 
+            color: rgb(24, 120, 175); font-weight: bold; 
+        }
+        
+    </style>
+
+</head>
+
+<body>
+
+    <h2>Ordini Ristorante</h2>
+
+    <label>Cliente: <input type="text" id="cliente" placeholder="Nome cliente"></label><br><br>
+
+    <label>Piatti:
+        <select id="piatti" multiple size="5">
+        </select>
+    </label><br><br>
+
+    <button onclick="inviaOrdine()">Invia ordine</button>
+    <hr>
+    <div id="ordini"></div>
+    <script>
+        let contatoreOrdini = 0;
+
+        const piattiMenu = [
+            "Pasta al sugo",
+            "Pizza margherita",
+            "Insalata mista",
+            "Lasagna",
+            "Risotto",
+            "Burger",
+            "Sushi",
+            "Tacos",
+            "Zuppa di verdure",
+        ];
+
+
+        const select = document.getElementById("piatti");
+        piattiMenu.forEach(plate => {
+            const opt = document.createElement("option");
+            opt.value = plate;
+            opt.textContent = plate;
+            select.appendChild(opt);
+        });
+
+        function rand(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function wait(ms) {
+            return new Promise(risposta => setTimeout(risposta, ms));
+        }
+
+        function inviaOrdine() {
+            const cliente = document.getElementById("cliente").value.trim();
+            const piatti = [...select.selectedOptions].map(piatti => piatti.value);
+
+            if (!cliente || piatti.length === 0) return alert("Dati mancanti");
+
+            const id = ++contatoreOrdini;
+
+            const container = document.createElement("div");
+            container.id = `ordine-${id}`;
+            container.innerHTML = `
+    <b>Ordine #${id}</b> - ${cliente} - ${piatti.join(", ")}<br>
+    Stato: <span id="stato-${id}" class="stato-inviato"> Inviato</span><br><br>
+  `;
+
+            document.getElementById("ordini").prepend(container);
+
+            elaboraOrdine(id, 0);
+        }
+
+        async function elaboraOrdine(id, tentativi) {
+            const stato = document.getElementById(`stato-${id}`);
+
+            stato.textContent = "📝​Inviato";
+            await wait(rand(1, 5) * 1000);
+
+            stato.textContent = "⏳​In preparazione";
+            await wait(rand(1, 10) * 1000);
+
+            // progressione più controllata:
+            // base 6, +1 per ogni tentativo, massimo successo certo al 4° retry
+            const soglia = Math.min(10, 6 + tentativi);
+            const tiro = rand(1, 10);
+
+            if (tiro >= soglia || tentativi >= 4) {
+                stato.textContent = "✅​Pronto";
+                return;
+            }
+
+            const btn = document.createElement("button");
+            btn.textContent = `Reinvia (${4 - tentativi} rimasti)`;
+            btn.onclick = () => {
+                btn.disabled = true;
+                elaboraOrdine(id, tentativi + 1);
+            };
+
+            stato.innerHTML = `❌​Fallito ( ${tiro}/${soglia} ) `;
+            stato.appendChild(btn);
+        }
+    </script>
+
+
+</body>
+
+</html>
