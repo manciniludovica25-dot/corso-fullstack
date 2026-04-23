@@ -1,10 +1,8 @@
-<!-- Utilizzando JSONPlaceholder (https://jsonplaceholder.typicode.com/ ) Crea un interfaccia che restituisca un elenco di articoli (post) in cui è possibile vedere il titolo, 
- il nome dell’utente (user), che si può ottenere dall’apposita rotta “user”, e i primi 20 caratteri del body, cliccando sul singolo elemento si deve vedere il dettaglio 
- completo del post e i suoi relativi commenti (comments). Crea nell’elenco il filtro per il campo utente (userId) in modo che si possano cercare tutti gli articoli (post) di 
- un certo utente mostrandone il nome ricevuto, preso sempre dall’apposita rotta “user”. 
-
-Extra: Per l’elenco dei post implementa la paginazione, dove l’utente che sta usando l’UI può scegliere se vedere 5, 10, 15, 20 o 25 risultati per pagina. -->
-
+<!-- Partendo dall’esercizio predente sui post, commenti e utenti, implementare una barra di ricerca che simuli una chiamata al back-end della durata tra i 1000 e i 4000 ms, i cui 
+criteri di validazione sono che il campo è obbligatorio e deve essere di almeno 3 caratteri (controlli lato javascript e non HTML), che mostri all’utente solo i risultati 
+trovati in base al titolo oppure al body del post. Genera un numero casuale da 1 a 10 dove in caso di 1 deve essere restituito un errore temporaneo del server con la possibilità
+ di riprovare. Gestire il loader durante la fase di sleep che simula il caricamento del back-end, l’errore in caso di validazione oppure errore server, l’eventuale pulsante per
+  riprovare e il caso di ritorno di un array di risultati vuoto. -->
 
 <!DOCTYPE html>
 <html lang="it">
@@ -12,211 +10,136 @@ Extra: Per l’elenco dei post implementa la paginazione, dove l’utente che st
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Articoli Blog</title>
+    <title>Articoli Con Ricerca</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: system-ui, sans-serif;
-            background: #f0f2f5;
-            padding: 20px;
-            color: #1a1a1a;
-        }
+body {
+    font-family: Georgia, "Times New Roman", serif;
+    background: #fdfcf9;
+    color: #111;
+    line-height: 1.6;
+    padding: 30px;
+}
 
-        .contenitore {
-            max-width: 860px;
-            margin: 0 auto;
-        }
+.contenitore { max-width: 760px; margin: 0 auto; }
 
-        h1 {
-            color: #1878af;
-            margin-bottom: 18px;
-        }
+h1 {
+    font-size: 42px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+    letter-spacing: -0.5px;
+}
 
-        /* Filtro */
-        .barra-filtro {
-            background: #fff;
-            padding: 12px 16px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px #0001;
-            margin-bottom: 16px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+.barra-ricerca, .barra-filtro, .pannello-paginazione {
+    border-bottom: 1px solid #ccc;
+    padding: 14px 0;
+    margin-bottom: 16px;
+}
 
-        .barra-filtro select,
-        .barra-filtro button {
-            padding: 7px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
-        }
+.gruppo-ricerca { display: flex; flex-wrap: wrap; gap: 16px; }
 
-        .barra-filtro button {
-            background: #1878af;
-            color: #fff;
-            border-color: #1878af;
-        }
+.campo-ricerca { flex: 1; min-width: 220px; }
 
-        .barra-filtro button:hover {
-            background: #125a85;
-        }
+.campo-ricerca label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #555;
+    display: block;
+    margin-bottom: 4px;
+}
 
-        /* Post */
-        .scheda-post {
-            background: #fff;
-            padding: 16px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px #0001;
-            border-left: 4px solid #1878af;
-            margin-bottom: 12px;
-        }
+.campo-ricerca input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid #000;
+    background: transparent;
+    padding: 6px 2px;
+    font-family: inherit;
+    font-size: 15px;
+}
 
-        .scheda-post h3 {
-            color: #1878af;
-            margin-bottom: 6px;
-            font-size: 15px;
-        }
+.campo-ricerca input:focus { outline: none; border-bottom: 2px solid #000; }
 
-        .scheda-post p {
-            color: #555;
-            font-size: 13px;
-            margin-bottom: 4px;
-        }
+.messaggio-validazione {
+    font-size: 13px;
+    color: #b00;
+    margin-top: 4px;
+    min-height: 18px;
+}
 
-        .scheda-post button {
-            margin-top: 8px;
-            padding: 5px 11px;
-            background: #1878af;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-        }
+button {
+    background: none;
+    border: 1px solid #000;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
 
-        /* Paginazione */
-        .pannello-paginazione {
-            background: #fff;
-            padding: 12px 16px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px #0001;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            justify-content: center;
-            margin-top: 4px;
-        }
+button:hover { background: #000; color: #fff; }
 
-        .pannello-paginazione select,
-        .pannello-paginazione button {
-            padding: 6px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            cursor: pointer;
-        }
+.barra-filtro { display: flex; gap: 10px; align-items: center; }
 
-        .pannello-paginazione button {
-            background: #1878af;
-            color: #fff;
-            border-color: #1878af;
-        }
+.barra-filtro select {
+    border: 1px solid #000;
+    background: transparent;
+    padding: 4px 8px;
+    font-family: inherit;
+}
 
-        .pannello-paginazione button:disabled {
-            background: #bbb;
-            border-color: #bbb;
-        }
+.scheda-post { padding: 18px 0; border-bottom: 1px solid #ddd; }
+.scheda-post h3 { font-size: 22px; margin-bottom: 6px; font-weight: bold; }
+.scheda-post p { font-size: 15px; color: #333; }
+.scheda-post button { margin-top: 8px; font-size: 13px; padding: 4px 10px; }
 
-        /* Overlay */
-        .sfondo-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: #0009;
-            z-index: 100;
-            overflow-y: auto;
-            padding: 20px;
-        }
+.pannello-paginazione { display: flex; justify-content: center; gap: 12px; }
+.pannello-paginazione select { border: 1px solid #000; background: transparent; padding: 4px; }
+.pannello-paginazione button:disabled { opacity: 0.4; }
 
-        .sfondo-overlay.visibile {
-            display: block;
-        }
+.sfondo-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); padding: 20px; }
+.sfondo-overlay.visibile { display: block; }
 
-        .finestra-overlay {
-            background: #fff;
-            border-radius: 10px;
-            max-width: 680px;
-            margin: 40px auto;
-            padding: 28px;
-            position: relative;
-        }
+.finestra-overlay {
+    background: #fff;
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 30px;
+    border: 1px solid #000;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+}
 
-        .finestra-overlay .pulsante-chiudi {
-            position: absolute;
-            top: 12px;
-            right: 16px;
-            font-size: 26px;
-            cursor: pointer;
-            color: #999;
-        }
+.pulsante-chiudi { position: absolute; top: 10px; right: 14px; font-size: 20px; cursor: pointer; }
+.finestra-overlay h2 { font-size: 26px; margin-bottom: 12px; }
+.corpo-post { margin: 15px 0; font-size: 16px; }
 
-        .finestra-overlay h2 {
-            color: #1878af;
-            margin-bottom: 12px;
-            padding-right: 24px;
-            font-size: 18px;
-        }
+.singolo-commento { border-top: 1px solid #ddd; padding: 10px 0; font-size: 14px; }
+.singolo-commento strong { font-weight: bold; }
+.singolo-commento small { color: #666; }
 
-        .finestra-overlay .corpo-post {
-            background: #f7f7f7;
-            padding: 12px;
-            border-radius: 6px;
-            margin: 12px 0;
-            font-size: 14px;
-            color: #333;
-            line-height: 1.6;
-        }
+.messaggio-info { text-align: center; font-style: italic; padding: 30px; color: #666; }
+.messaggio-errore { border: 1px solid #000; padding: 10px; background: #fafafa; margin-bottom: 10px; }
+.messaggio-successo { border: 1px solid #000; padding: 10px; background: #f4f4f4; margin-bottom: 10px; }
 
-        .finestra-overlay h3 {
-            margin-bottom: 10px;
-            font-size: 15px;
-        }
+.loader { text-align: center; padding: 40px; }
+.spinner {
+    width: 30px; height: 30px;
+    border: 2px solid #000;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: auto;
+}
 
-        .singolo-commento {
-            border-bottom: 1px solid #eee;
-            padding: 8px 0;
-            font-size: 13px;
-        }
+mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
 
-        .singolo-commento strong {
-            display: block;
-        }
-
-        .singolo-commento small {
-            color: #888;
-        }
-
-        /* Stati */
-        .messaggio-info {
-            text-align: center;
-            padding: 30px;
-            color: #777;
-        }
-
-        .messaggio-errore {
-            background: #fee;
-            color: #c00;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-        }
+@keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 
@@ -224,13 +147,26 @@ Extra: Per l’elenco dei post implementa la paginazione, dove l’utente che st
     <div class="contenitore">
         <h1>📝 Articoli</h1>
 
+        <div class="barra-ricerca">
+            <div class="gruppo-ricerca">
+                <div class="campo-ricerca" style="flex:2">
+                    <label>🔍 Cerca nei post</label>
+                    <input type="text" id="campoRicerca" placeholder="Cerca per titolo o contenuto...">
+                    <div id="validazioneRicerca" class="messaggio-validazione"></div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:8px">
+                    <button id="pulsanteCerca">🔍 Cerca</button>
+                    <button id="pulsanteReset">🗑️ Reset</button>
+                </div>
+            </div>
+        </div>
+
         <div class="barra-filtro">
-            <label>Utente:</label>
+            <label>Filtra per utente:</label>
             <select id="selettoreUtente">
                 <option value="">Tutti</option>
             </select>
-            <button id="pulsanteFiltra">Filtra</button>
-            <span id="etichettaUtenteFiltrato" style="margin-left:auto;color:#1878af;font-weight:500"></span>
+            <button id="pulsanteFiltra">Applica filtro</button>
         </div>
 
         <div id="areaMessaggi"></div>
@@ -246,185 +182,284 @@ Extra: Per l’elenco dei post implementa la paginazione, dove l’utente che st
     </div>
 
     <script>
-        const INDIRIZZO_API = "https://jsonplaceholder.typicode.com";
-        
-        // Stato dell'applicazione
-        const statoApp = { 
-            mappaUtenti: new Map(),  // id -> {name, email, ...}
-            articoliUtente: [], // salva articoli filtrati per utente 
-            paginaCorrente: 1, 
+        const API = "https://jsonplaceholder.typicode.com";
+
+        const stato = {
+            mappaUtenti: new Map(),
+            tuttiPost: [],
+            articoliCorrente: [],
+            paginaCorrente: 1,
             elementiPerPagina: 10,
-            idUtenteFiltrato: null 
+            idUtenteFiltrato: null,
+            ricercaAttiva: ""
         };
 
-        // Helper per selezionare elementi DOM
-        const seleziona = id => document.getElementById(id);
+        const $ = id => document.getElementById(id);
 
-        // --- Gestione messaggi UI ---
-        const impostaMessaggio = (html) => seleziona("areaMessaggi").innerHTML = html;
-        const mostraCaricamento = () => impostaMessaggio('<p class="messaggio-info">⏳ Caricamento in corso...</p>');
-        const nascondiMessaggio = () => impostaMessaggio("");
+        const delayCasuale = () =>
+            new Promise(r => setTimeout(r, Math.random() * 3000 + 1000));
 
-        // --- Funzione generica per chiamate API ---
-        const recuperaDati = async url => {
-            const risposta = await fetch(url);
-            if (!risposta.ok) throw new Error("Errore di rete: " + url);
-            return risposta.json();
+        const simulaErroreServer = () =>
+            Math.floor(Math.random() * 10) + 1 === 1;
+
+        // --- Validazione ---
+        // Restituisce il messaggio di errore oppure stringa vuota se valido
+        const validaRicerca = testo => {
+            if (!testo || testo.trim() === "")
+                return "⚠️ Il campo di ricerca è obbligatorio.";
+            if (testo.trim().length < 3)
+                return "⚠️ Inserisci almeno 3 caratteri.";
+            return "";
         };
 
-        // --- Inizializzazione: carica tutti gli utenti ---
-        async function inizializza() {
-            mostraCaricamento();
-            const elencoUtenti = await recuperaDati(`${INDIRIZZO_API}/users`);
-            
-            // Popola la mappa degli utenti
-            elencoUtenti.forEach(utente => statoApp.mappaUtenti.set(utente.id, utente));
-            
-            // Popola il menu a tendina
-            seleziona("selettoreUtente").innerHTML = '<option value="">Tutti</option>' +
-                elencoUtenti.map(utente => `<option value="${utente.id}">${utente.name}</option>`).join("");
-            
-            caricaPost();
-        }
+        // --- UI helpers ---
+        const mostraLoader = () => {
+            $("areaMessaggi").innerHTML = "";
+            $("contenitorePost").innerHTML = `
+                <div class="loader">
+                    <div class="spinner"></div>
+                    <p>⏳ Caricamento in corso...</p>
+                </div>`;
+            $("pannelloPaginazione").innerHTML = "";
+        };
 
-        // Carica e visualizza i post in base allo stato corrente (pagina, filtro utente)
-        async function caricaPost() {
-            mostraCaricamento();
-            
-            // Costruzione parametri query ( senza userId, con userId)
-            const parametriQuery = new URLSearchParams({ 
-                _page: statoApp.paginaCorrente, 
-                _limit: statoApp.elementiPerPagina 
-            });
-            
-            if (statoApp.idUtenteFiltrato) {
-                parametriQuery.append("userId", statoApp.idUtenteFiltrato);
+        const mostraMessaggio = (html, tipo = "info") => {
+            const classi = { info: "messaggio-info", errore: "messaggio-errore", successo: "messaggio-successo" };
+            $("areaMessaggi").innerHTML = `<div class="${classi[tipo]}">${html}</div>`;
+            if (tipo === "successo")
+                setTimeout(() => $("areaMessaggi").innerHTML = "", 3000);
+        };
+
+        const mostraErroreConRetry = () => {
+            $("contenitorePost").innerHTML = `
+                <div class="messaggio-errore">
+                    <strong>⚠️ Errore temporaneo del server</strong>
+                    <p style="margin:10px 0">Il server ha riscontrato un problema. Riprova tra poco.</p>
+                    <button id="pulsanteRetry">🔄 Riprova</button>
+                </div>`;
+            $("pulsanteRetry").onclick = () => eseguiRicerca($("campoRicerca").value);
+        };
+
+        // --- Caricamento post (con cache) ---
+        const getPost = async () => {
+            if (stato.tuttiPost.length === 0) {
+                const r = await fetch(`${API}/posts`);
+                if (!r.ok) throw new Error("ERRORE_RETE");
+                stato.tuttiPost = await r.json();
             }
+            return stato.tuttiPost;
+        };
 
-            const elencoPost = await recuperaDati(`${INDIRIZZO_API}/posts?${parametriQuery}`);
-            statoApp.articoliUtente = elencoPost; // salva i post nell'array
-            nascondiMessaggio();
+        // --- Visualizzazione con paginazione ---
+        const evidenzia = (testo, termine) => {
+            if (!termine || termine.length < 3) return testo;
+            const re = new RegExp(`(${termine.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+            return testo.replace(re, "<mark>$1</mark>");
+        };
 
-            
-
-            // Se nessun post trovato
-            if (!elencoPost.length) {
-                seleziona("contenitorePost").innerHTML = '<p class="messaggio-info">📭 Nessun articolo trovato.</p>';
-                seleziona("pannelloPaginazione").innerHTML = "";
+        const visualizzaRisultati = (risultati, termine) => {
+            if (!risultati.length) {
+                $("contenitorePost").innerHTML = `
+                    <div class="messaggio-info">
+                        📭 Nessun risultato trovato${termine ? ` per "${termine}"` : ""}
+                        <p style="margin-top:10px;font-size:13px">Prova con un'altra parola chiave</p>
+                    </div>`;
+                $("pannelloPaginazione").innerHTML = "";
                 return;
             }
 
-            // Costruzione HTML dei post
-            seleziona("contenitorePost").innerHTML = elencoPost.map(post => {
-                const autore = statoApp.mappaUtenti.get(post.userId);
-                const nomeAutore = autore ? autore.name : `Utente #${post.userId}`;
-                const anteprima = post.body.slice(0, 20) + (post.body.length > 20 ? "…" : "");
-                
+            const inizio = (stato.paginaCorrente - 1) * stato.elementiPerPagina;
+            const pagina = risultati.slice(inizio, inizio + stato.elementiPerPagina);
+            const totalePagine = Math.ceil(risultati.length / stato.elementiPerPagina);
+
+            $("contenitorePost").innerHTML = pagina.map(post => {
+                const autore = stato.mappaUtenti.get(post.userId);
+                const nome = autore ? autore.name : `Utente #${post.userId}`;
                 return `
                     <div class="scheda-post">
-                        <h3>${post.title}</h3>
-                        <p>👤 <strong>${nomeAutore}</strong></p>
-                        <p>📄 ${anteprima}</p>
+                        <h3>📌 ${evidenzia(post.title, termine)}</h3>
+                        <p>👤 <strong>${nome}</strong></p>
+                        <p>📄 ${evidenzia(post.body.substring(0, 100), termine)}${post.body.length > 100 ? "…" : ""}</p>
                         <button data-id="${post.id}">🔍 Dettagli</button>
-                    </div>
-                `;
+                    </div>`;
             }).join("");
 
-            // Aggiorna etichetta con nome utente filtrato
-            seleziona("etichettaUtenteFiltrato").textContent = 
-                statoApp.idUtenteFiltrato && statoApp.mappaUtenti.has(statoApp.idUtenteFiltrato)
-                ? `📌 ${statoApp.mappaUtenti.get(statoApp.idUtenteFiltrato).name}` 
-                : "";
+            if (totalePagine > 1) {
+                $("pannelloPaginazione").innerHTML = `
+                    <select id="selettoreLimite">
+                        ${[5, 10, 15, 20, 25].map(n =>
+                            `<option ${n === stato.elementiPerPagina ? "selected" : ""}>${n} per pagina</option>`
+                        ).join("")}
+                    </select>
+                    <button id="btnPrec" ${stato.paginaCorrente === 1 ? "disabled" : ""}>← Precedente</button>
+                    <span>Pagina ${stato.paginaCorrente} di ${totalePagine}</span>
+                    <button id="btnSucc" ${stato.paginaCorrente === totalePagine ? "disabled" : ""}>Successiva →</button>`;
 
-            costruisciPagina();
-        }
+                $("selettoreLimite").onchange = e => {
+                    stato.elementiPerPagina = parseInt(e.target.value);
+                    stato.paginaCorrente = 1;
+                    visualizzaRisultati(risultati, termine);
+                };
+                $("btnPrec").onclick = () => { stato.paginaCorrente--; visualizzaRisultati(risultati, termine); };
+                $("btnSucc").onclick = () => { stato.paginaCorrente++; visualizzaRisultati(risultati, termine); };
+            } else {
+                $("pannelloPaginazione").innerHTML = "";
+            }
+        };
 
-        //  Costruzione controlli di paginazione
-        function costruisciPagina() {
-            const totalePagine = Math.ceil(100 / statoApp.elementiPerPagina);
-            
-            seleziona("pannelloPaginazione").innerHTML = `
-                <select id="selettoreLimite">
-                    ${[5, 10, 15, 20, 25].map(numero => 
-                        `<option ${numero === statoApp.elementiPerPagina ? "selected" : ""}>${numero} per pagina</option>`
-                    ).join("")}
-                </select>
-                <button id="pulsantePrecedente" ${statoApp.paginaCorrente === 1 ? "disabled" : ""}>← Precedente</button>
-                <span>Pagina ${statoApp.paginaCorrente} di ${totalePagine}</span>
-                <button id="pulsanteSuccessivo" ${statoApp.paginaCorrente === totalePagine ? "disabled" : ""}>Successiva →</button>
-            `;
-            
-            // Event listeners per la paginazione
-            seleziona("selettoreLimite").onchange = evento => { 
-                statoApp.elementiPerPagina = parseInt(evento.target.value); 
-                statoApp.paginaCorrente = 1; 
-                caricaPost(); 
-            };
-            
-            seleziona("pulsantePrecedente").onclick = () => { 
-                statoApp.paginaCorrente--; 
-                caricaPost(); 
-            };
-            
-            seleziona("pulsanteSuccessivo").onclick = () => { 
-                statoApp.paginaCorrente++; 
-                caricaPost(); 
-            };
-        }
+        // --- Ricerca ---
+        const eseguiRicerca = async testo => {
+            const erroreValidazione = validaRicerca(testo);
 
-        //  Visualizzazione dettaglio post in overlay 
-        async function mostraDettaglioPost(idPost) {
-            seleziona("sfondoOverlay").classList.add("visibile");
-            seleziona("contenutoOverlay").innerHTML = '<p class="messaggio-info">⏳ Caricamento dettaglio...</p>';
+            // Errore di validazione: mostra solo sotto il campo, non in areaMessaggi
+            if (erroreValidazione) {
+                $("validazioneRicerca").textContent = erroreValidazione;
+                $("campoRicerca").focus();
+                return;
+            }
 
-            // Recupero parallelo di post e commenti
-            const [postSingolo, elencoCommenti] = await Promise.all([
-                recuperaDati(`${INDIRIZZO_API}/posts/${idPost}`),
-                recuperaDati(`${INDIRIZZO_API}/comments?postId=${idPost}`)
-            ]);
+            // Ripulisci errore di validazione precedente
+            $("validazioneRicerca").textContent = "";
+            mostraLoader();
 
-            const autore = statoApp.mappaUtenti.get(postSingolo.userId);
-            const infoAutore = autore ? `${autore.name} (${autore.email})` : `Utente #${postSingolo.userId}`;
+            try {
+                await delayCasuale();
 
-            seleziona("contenutoOverlay").innerHTML = `
-                <h2>${postSingolo.title}</h2>
-                <p>👤 <strong>${infoAutore}</strong></p>
-                <div class="corpo-post">${postSingolo.body}</div>
-                <h3>💬 Commenti (${elencoCommenti.length})</h3>
-                ${elencoCommenti.map(commento => `
-                    <div class="singolo-commento">
-                        <strong>${commento.name}</strong>
-                        <small>${commento.email}</small>
-                        <p>${commento.body}</p>
-                    </div>
-                `).join("")}
-            `;
-        }
+                if (simulaErroreServer()) throw new Error("ERRORE_SERVER");
 
-        //  Event Listeners per filtro e dettagli
-        seleziona("pulsanteFiltra").onclick = () => {
-            const valoreSelezionato = seleziona("selettoreUtente").value;
-            statoApp.idUtenteFiltrato = valoreSelezionato ? parseInt(valoreSelezionato) : null;
-            statoApp.paginaCorrente = 1;
+                const posts = await getPost();
+                let risultati = stato.idUtenteFiltrato
+                    ? posts.filter(p => p.userId === stato.idUtenteFiltrato)
+                    : [...posts];
+
+                const ricerca = testo.trim().toLowerCase();
+                risultati = risultati.filter(p =>
+                    p.title.toLowerCase().includes(ricerca) ||
+                    p.body.toLowerCase().includes(ricerca)
+                );
+
+                stato.articoliCorrente = risultati;
+                stato.ricercaAttiva = testo;
+                stato.paginaCorrente = 1;
+
+                mostraMessaggio(
+                    risultati.length
+                        ? `✅ Trovati ${risultati.length} articoli per "${testo}".`
+                        : `📭 Nessun articolo trovato per "${testo}".`,
+                    risultati.length ? "successo" : "info"
+                );
+                visualizzaRisultati(risultati, testo.trim());
+
+            } catch (e) {
+                if (e.message === "ERRORE_SERVER") {
+                    mostraMessaggio("⚠️ Errore temporaneo del server.", "errore");
+                    mostraErroreConRetry();
+                } else {
+                    mostraMessaggio("❌ Errore nel caricamento dei dati. Riprova più tardi.", "errore");
+                    $("contenitorePost").innerHTML = "";
+                    $("pannelloPaginazione").innerHTML = "";
+                }
+            }
+        };
+
+        // --- Carica post normalmente (senza ricerca) ---
+        const caricaPost = async () => {
+            mostraLoader();
+            try {
+                const posts = await getPost();
+                const filtrati = stato.idUtenteFiltrato
+                    ? posts.filter(p => p.userId === stato.idUtenteFiltrato)
+                    : [...posts];
+                stato.articoliCorrente = filtrati;
+                stato.ricercaAttiva = "";
+                stato.paginaCorrente = 1;
+                visualizzaRisultati(filtrati, "");
+            } catch {
+                mostraMessaggio("❌ Errore nel caricamento dei post.", "errore");
+            }
+        };
+
+        // --- Reset ---
+        const resetRicerca = () => {
+            $("campoRicerca").value = "";
+            $("validazioneRicerca").textContent = "";
+            $("areaMessaggi").innerHTML = "";
             caricaPost();
         };
 
-        // Delega eventi per i pulsanti "Dettagli" nei post
-        seleziona("contenitorePost").addEventListener("click", evento => {
-            const pulsante = evento.target.closest("button[data-id]");
-            if (pulsante) mostraDettaglioPost(pulsante.dataset.id);
-        });
-
-        // Chiusura overlay
-        const chiudiOverlay = () => seleziona("sfondoOverlay").classList.remove("visibile");
-        seleziona("pulsanteChiudiOverlay").onclick = chiudiOverlay;
-        seleziona("sfondoOverlay").onclick = evento => { 
-            if (evento.target === seleziona("sfondoOverlay")) chiudiOverlay(); 
+        // --- Dettaglio post ---
+        const mostraDettaglio = async idPost => {
+            $("sfondoOverlay").classList.add("visibile");
+            $("contenutoOverlay").innerHTML = '<p class="messaggio-info">⏳ Caricamento dettaglio...</p>';
+            try {
+                const [post, commenti] = await Promise.all([
+                    fetch(`${API}/posts/${idPost}`).then(r => r.json()),
+                    fetch(`${API}/comments?postId=${idPost}`).then(r => r.json())
+                ]);
+                const autore = stato.mappaUtenti.get(post.userId);
+                const info = autore ? `${autore.name} (${autore.email})` : `Utente #${post.userId}`;
+                $("contenutoOverlay").innerHTML = `
+                    <h2>${post.title}</h2>
+                    <p>👤 <strong>${info}</strong></p>
+                    <div class="corpo-post">${post.body}</div>
+                    <h3>💬 Commenti (${commenti.length})</h3>
+                    ${commenti.map(c => `
+                        <div class="singolo-commento">
+                            <strong>${c.name}</strong>
+                            <small>${c.email}</small>
+                            <p>${c.body}</p>
+                        </div>`).join("")}`;
+            } catch {
+                $("contenutoOverlay").innerHTML = '<p class="messaggio-errore">❌ Errore nel caricamento</p>';
+            }
         };
 
-        // Avvio applicazione
+        // --- Inizializzazione ---
+        const inizializza = async () => {
+            mostraLoader();
+            try {
+                const utenti = await fetch(`${API}/users`).then(r => r.json());
+                utenti.forEach(u => stato.mappaUtenti.set(u.id, u));
+                $("selettoreUtente").innerHTML =
+                    '<option value="">Tutti</option>' +
+                    utenti.map(u => `<option value="${u.id}">${u.name}</option>`).join("");
+                await caricaPost();
+            } catch {
+                mostraMessaggio("❌ Errore nell'inizializzazione.", "errore");
+            }
+        };
+
+        // --- Event listeners ---
+        $("pulsanteCerca").onclick = () => eseguiRicerca($("campoRicerca").value);
+
+        $("pulsanteReset").onclick = resetRicerca;
+
+        $("campoRicerca").addEventListener("keypress", e => {
+            if (e.key === "Enter") eseguiRicerca($("campoRicerca").value);
+        });
+
+        // Rimuovi errore di validazione mentre l'utente digita
+        $("campoRicerca").addEventListener("input", () => {
+            $("validazioneRicerca").textContent = "";
+        });
+
+        $("pulsanteFiltra").onclick = () => {
+            const val = $("selettoreUtente").value;
+            stato.idUtenteFiltrato = val ? parseInt(val) : null;
+            stato.paginaCorrente = 1;
+            stato.ricercaAttiva ? eseguiRicerca(stato.ricercaAttiva) : caricaPost();
+        };
+
+        $("contenitorePost").addEventListener("click", e => {
+            const btn = e.target.closest("button[data-id]");
+            if (btn) mostraDettaglio(parseInt(btn.dataset.id));
+        });
+
+        const chiudiOverlay = () => $("sfondoOverlay").classList.remove("visibile");
+        $("pulsanteChiudiOverlay").onclick = chiudiOverlay;
+        $("sfondoOverlay").onclick = e => { if (e.target === $("sfondoOverlay")) chiudiOverlay(); };
+
         inizializza();
     </script>
 </body>
-
 </html>
