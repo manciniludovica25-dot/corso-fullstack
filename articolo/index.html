@@ -1,3 +1,11 @@
+<!-- Utilizzando JSONPlaceholder (https://jsonplaceholder.typicode.com/ ) Crea un interfaccia che restituisca un elenco di articoli (post) in cui è possibile vedere il titolo, 
+ il nome dell’utente (user), che si può ottenere dall’apposita rotta “user”, e i primi 20 caratteri del body, cliccando sul singolo elemento si deve vedere il dettaglio 
+ completo del post e i suoi relativi commenti (comments). Crea nell’elenco il filtro per il campo utente (userId) in modo che si possano cercare tutti gli articoli (post) di 
+ un certo utente mostrandone il nome ricevuto, preso sempre dall’apposita rotta “user”. 
+
+Extra: Per l’elenco dei post implementa la paginazione, dove l’utente che sta usando l’UI può scegliere se vedere 5, 10, 15, 20 o 25 risultati per pagina. -->
+
+
 <!DOCTYPE html>
 <html lang="it">
 
@@ -126,8 +134,8 @@
             border-color: #bbb;
         }
 
-        /* Modale */
-        .sfondo-modale {
+        /* Overlay */
+        .sfondo-overlay {
             display: none;
             position: fixed;
             inset: 0;
@@ -137,11 +145,11 @@
             padding: 20px;
         }
 
-        .sfondo-modale.visibile {
+        .sfondo-overlay.visibile {
             display: block;
         }
 
-        .finestra-modale {
+        .finestra-overlay {
             background: #fff;
             border-radius: 10px;
             max-width: 680px;
@@ -150,7 +158,7 @@
             position: relative;
         }
 
-        .finestra-modale .pulsante-chiudi {
+        .finestra-overlay .pulsante-chiudi {
             position: absolute;
             top: 12px;
             right: 16px;
@@ -159,14 +167,14 @@
             color: #999;
         }
 
-        .finestra-modale h2 {
+        .finestra-overlay h2 {
             color: #1878af;
             margin-bottom: 12px;
             padding-right: 24px;
             font-size: 18px;
         }
 
-        .finestra-modale .corpo-post {
+        .finestra-overlay .corpo-post {
             background: #f7f7f7;
             padding: 12px;
             border-radius: 6px;
@@ -176,7 +184,7 @@
             line-height: 1.6;
         }
 
-        .finestra-modale h3 {
+        .finestra-overlay h3 {
             margin-bottom: 10px;
             font-size: 15px;
         }
@@ -230,10 +238,10 @@
         <div id="pannelloPaginazione" class="pannello-paginazione"></div>
     </div>
 
-    <div id="sfondoModale" class="sfondo-modale">
-        <div class="finestra-modale">
-            <span class="pulsante-chiudi" id="pulsanteChiudiModale">&times;</span>
-            <div id="contenutoModale"></div>
+    <div id="sfondoOverlay" class="sfondo-overlay">
+        <div class="finestra-overlay">
+            <span class="pulsante-chiudi" id="pulsanteChiudiOverlay">&times;</span>
+            <div id="contenutoOverlay"></div>
         </div>
     </div>
 
@@ -241,8 +249,9 @@
         const INDIRIZZO_API = "https://jsonplaceholder.typicode.com";
         
         // Stato dell'applicazione
-        const statoApplicazione = { 
+        const statoApp = { 
             mappaUtenti: new Map(),  // id -> {name, email, ...}
+            articoliUtente: [], // salva articoli filtrati per utente 
             paginaCorrente: 1, 
             elementiPerPagina: 10,
             idUtenteFiltrato: null 
@@ -269,7 +278,7 @@
             const elencoUtenti = await recuperaDati(`${INDIRIZZO_API}/users`);
             
             // Popola la mappa degli utenti
-            elencoUtenti.forEach(utente => statoApplicazione.mappaUtenti.set(utente.id, utente));
+            elencoUtenti.forEach(utente => statoApp.mappaUtenti.set(utente.id, utente));
             
             // Popola il menu a tendina
             seleziona("selettoreUtente").innerHTML = '<option value="">Tutti</option>' +
@@ -278,22 +287,25 @@
             caricaPost();
         }
 
-        // --- Carica e visualizza i post in base allo stato corrente ---
+        // Carica e visualizza i post in base allo stato corrente (pagina, filtro utente)
         async function caricaPost() {
             mostraCaricamento();
             
             // Costruzione parametri query ( senza userId, con userId)
             const parametriQuery = new URLSearchParams({ 
-                _page: statoApplicazione.paginaCorrente, 
-                _limit: statoApplicazione.elementiPerPagina 
+                _page: statoApp.paginaCorrente, 
+                _limit: statoApp.elementiPerPagina 
             });
             
-            if (statoApplicazione.idUtenteFiltrato) {
-                parametriQuery.append("userId", statoApplicazione.idUtenteFiltrato);
+            if (statoApp.idUtenteFiltrato) {
+                parametriQuery.append("userId", statoApp.idUtenteFiltrato);
             }
 
             const elencoPost = await recuperaDati(`${INDIRIZZO_API}/posts?${parametriQuery}`);
+            statoApp.articoliUtente = elencoPost; // salva i post nell'array
             nascondiMessaggio();
+
+            
 
             // Se nessun post trovato
             if (!elencoPost.length) {
@@ -304,7 +316,7 @@
 
             // Costruzione HTML dei post
             seleziona("contenitorePost").innerHTML = elencoPost.map(post => {
-                const autore = statoApplicazione.mappaUtenti.get(post.userId);
+                const autore = statoApp.mappaUtenti.get(post.userId);
                 const nomeAutore = autore ? autore.name : `Utente #${post.userId}`;
                 const anteprima = post.body.slice(0, 20) + (post.body.length > 20 ? "…" : "");
                 
@@ -320,8 +332,8 @@
 
             // Aggiorna etichetta con nome utente filtrato
             seleziona("etichettaUtenteFiltrato").textContent = 
-                statoApplicazione.idUtenteFiltrato && statoApplicazione.mappaUtenti.has(statoApplicazione.idUtenteFiltrato)
-                ? `📌 ${statoApplicazione.mappaUtenti.get(statoApplicazione.idUtenteFiltrato).name}` 
+                statoApp.idUtenteFiltrato && statoApp.mappaUtenti.has(statoApp.idUtenteFiltrato)
+                ? `📌 ${statoApp.mappaUtenti.get(statoApp.idUtenteFiltrato).name}` 
                 : "";
 
             costruisciPagina();
@@ -329,41 +341,41 @@
 
         //  Costruzione controlli di paginazione
         function costruisciPagina() {
-            const totalePagine = Math.ceil(100 / statoApplicazione.elementiPerPagina);
+            const totalePagine = Math.ceil(100 / statoApp.elementiPerPagina);
             
             seleziona("pannelloPaginazione").innerHTML = `
                 <select id="selettoreLimite">
                     ${[5, 10, 15, 20, 25].map(numero => 
-                        `<option ${numero === statoApplicazione.elementiPerPagina ? "selected" : ""}>${numero} per pagina</option>`
+                        `<option ${numero === statoApp.elementiPerPagina ? "selected" : ""}>${numero} per pagina</option>`
                     ).join("")}
                 </select>
-                <button id="pulsantePrecedente" ${statoApplicazione.paginaCorrente === 1 ? "disabled" : ""}>← Precedente</button>
-                <span>Pagina ${statoApplicazione.paginaCorrente} di ${totalePagine}</span>
-                <button id="pulsanteSuccessivo" ${statoApplicazione.paginaCorrente === totalePagine ? "disabled" : ""}>Successiva →</button>
+                <button id="pulsantePrecedente" ${statoApp.paginaCorrente === 1 ? "disabled" : ""}>← Precedente</button>
+                <span>Pagina ${statoApp.paginaCorrente} di ${totalePagine}</span>
+                <button id="pulsanteSuccessivo" ${statoApp.paginaCorrente === totalePagine ? "disabled" : ""}>Successiva →</button>
             `;
             
             // Event listeners per la paginazione
             seleziona("selettoreLimite").onchange = evento => { 
-                statoApplicazione.elementiPerPagina = parseInt(evento.target.value); 
-                statoApplicazione.paginaCorrente = 1; 
+                statoApp.elementiPerPagina = parseInt(evento.target.value); 
+                statoApp.paginaCorrente = 1; 
                 caricaPost(); 
             };
             
             seleziona("pulsantePrecedente").onclick = () => { 
-                statoApplicazione.paginaCorrente--; 
+                statoApp.paginaCorrente--; 
                 caricaPost(); 
             };
             
             seleziona("pulsanteSuccessivo").onclick = () => { 
-                statoApplicazione.paginaCorrente++; 
+                statoApp.paginaCorrente++; 
                 caricaPost(); 
             };
         }
 
-        //  Visualizzazione dettaglio post in modale 
+        //  Visualizzazione dettaglio post in overlay 
         async function mostraDettaglioPost(idPost) {
-            seleziona("sfondoModale").classList.add("visibile");
-            seleziona("contenutoModale").innerHTML = '<p class="messaggio-info">⏳ Caricamento dettaglio...</p>';
+            seleziona("sfondoOverlay").classList.add("visibile");
+            seleziona("contenutoOverlay").innerHTML = '<p class="messaggio-info">⏳ Caricamento dettaglio...</p>';
 
             // Recupero parallelo di post e commenti
             const [postSingolo, elencoCommenti] = await Promise.all([
@@ -371,10 +383,10 @@
                 recuperaDati(`${INDIRIZZO_API}/comments?postId=${idPost}`)
             ]);
 
-            const autore = statoApplicazione.mappaUtenti.get(postSingolo.userId);
+            const autore = statoApp.mappaUtenti.get(postSingolo.userId);
             const infoAutore = autore ? `${autore.name} (${autore.email})` : `Utente #${postSingolo.userId}`;
 
-            seleziona("contenutoModale").innerHTML = `
+            seleziona("contenutoOverlay").innerHTML = `
                 <h2>${postSingolo.title}</h2>
                 <p>👤 <strong>${infoAutore}</strong></p>
                 <div class="corpo-post">${postSingolo.body}</div>
@@ -392,8 +404,8 @@
         //  Event Listeners per filtro e dettagli
         seleziona("pulsanteFiltra").onclick = () => {
             const valoreSelezionato = seleziona("selettoreUtente").value;
-            statoApplicazione.idUtenteFiltrato = valoreSelezionato ? parseInt(valoreSelezionato) : null;
-            statoApplicazione.paginaCorrente = 1;
+            statoApp.idUtenteFiltrato = valoreSelezionato ? parseInt(valoreSelezionato) : null;
+            statoApp.paginaCorrente = 1;
             caricaPost();
         };
 
@@ -403,11 +415,11 @@
             if (pulsante) mostraDettaglioPost(pulsante.dataset.id);
         });
 
-        // Chiusura modale
-        const chiudiModale = () => seleziona("sfondoModale").classList.remove("visibile");
-        seleziona("pulsanteChiudiModale").onclick = chiudiModale;
-        seleziona("sfondoModale").onclick = evento => { 
-            if (evento.target === seleziona("sfondoModale")) chiudiModale(); 
+        // Chiusura overlay
+        const chiudiOverlay = () => seleziona("sfondoOverlay").classList.remove("visibile");
+        seleziona("pulsanteChiudiOverlay").onclick = chiudiOverlay;
+        seleziona("sfondoOverlay").onclick = evento => { 
+            if (evento.target === seleziona("sfondoOverlay")) chiudiOverlay(); 
         };
 
         // Avvio applicazione
