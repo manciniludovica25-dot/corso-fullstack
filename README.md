@@ -21,6 +21,6 @@ Per i progetti in HTML:
 - **File che iniziano con `P`** = **versioni precedenti**, rinominate con la data di creazione
 
 Formato consigliato:
-- `PYYYY-MM-DD.html` (es. `P2026-04-23.html`)
-- se ci sono più versioni nello stesso giorno: `PYYYY-MM-DD_HHMM.html` (es. `P2026-04-23_1530.html`)
+- `PYYYYMMDD_nomeProgetto.html` (es. `P20260423_articolo.html`)
+- se ci sono più versioni nello stesso giorno: `PYYYYMMDD_nomeProgetto1.html` (es.`P20260423_articolo2.html` )
 
