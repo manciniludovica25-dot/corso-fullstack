@@ -1,3 +1,9 @@
+<!-- Partendo dall’esercizio predente sui post, commenti e utenti, implementare una barra di ricerca che simuli una chiamata al back-end della durata tra i 1000 e i 4000 ms, i cui 
+criteri di validazione sono che il campo è obbligatorio e deve essere di almeno 3 caratteri (controlli lato javascript e non HTML), che mostri all’utente solo i risultati 
+trovati in base al titolo oppure al body del post. Genera un numero casuale da 1 a 10 dove in caso di 1 deve essere restituito un errore temporaneo del server con la possibilità
+ di riprovare. Gestire il loader durante la fase di sleep che simula il caricamento del back-end, l’errore in caso di validazione oppure errore server, l’eventuale pulsante per
+  riprovare e il caso di ritorno di un array di risultati vuoto. -->
+  
 <!DOCTYPE html>
 <html lang="it">
 
@@ -193,7 +199,7 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
                     <input type="text" id="campoRicerca" placeholder="Cerca per titolo o contenuto...">
                     <div id="validazioneRicerca" class="messaggio-validazione"></div>
                 </div>
-                <div style="display:flex;align-items:flex-end;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px">
                     <button id="pulsanteCerca">🔍 Cerca</button>
                     <button id="pulsanteReset">🗑️ Reset</button>
                 </div>
