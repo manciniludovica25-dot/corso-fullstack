@@ -1,3 +1,9 @@
+<!-- Partendo dall’esercizio predente sui post, commenti e utenti, implementare una barra di ricerca che simuli una chiamata al back-end della durata tra i 1000 e i 4000 ms, i cui 
+criteri di validazione sono che il campo è obbligatorio e deve essere di almeno 3 caratteri (controlli lato javascript e non HTML), che mostri all’utente solo i risultati 
+trovati in base al titolo oppure al body del post. Genera un numero casuale da 1 a 10 dove in caso di 1 deve essere restituito un errore temporaneo del server con la possibilità
+ di riprovare. Gestire il loader durante la fase di sleep che simula il caricamento del back-end, l’errore in caso di validazione oppure errore server, l’eventuale pulsante per
+  riprovare e il caso di ritorno di un array di risultati vuoto. -->
+
 <!DOCTYPE html>
 <html lang="it">
 
@@ -28,7 +34,7 @@ h1 {
     letter-spacing: -0.5px;
 }
 
-.barra-ricerca, .barra-filtro {
+.barra-ricerca, .barra-filtro, .pannello-paginazione {
     border-bottom: 1px solid #ccc;
     padding: 14px 0;
     margin-bottom: 16px;
@@ -91,54 +97,9 @@ button:hover { background: #000; color: #fff; }
 .scheda-post p { font-size: 15px; color: #333; }
 .scheda-post button { margin-top: 8px; font-size: 13px; padding: 4px 10px; }
 
-.pannello-paginazione {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    border-top: 1px solid #ccc;
-    border-bottom: 1px solid #ccc;
-    padding: 10px 0;
-    margin: 16px 0;
-    min-height: 42px;
-    flex-wrap: wrap;
-}
-
+.pannello-paginazione { display: flex; justify-content: center; gap: 12px; }
 .pannello-paginazione select { border: 1px solid #000; background: transparent; padding: 4px; }
 .pannello-paginazione button:disabled { opacity: 0.4; }
-
-.riepilogo-count {
-    font-size: 13px;
-    color: #555;
-    font-style: italic;
-    margin-left: 10px;
-}
-
-/* Nuovo stile per la barra dei risultati in basso */
-.barra-risultati-basso {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    flex-wrap: wrap;
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid #ccc;
-}
-.controlli-pagina {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.badge-totale {
-    background: #f0f0f0;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    color: #333;
-}
 
 .sfondo-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); padding: 20px; }
 .sfondo-overlay.visibile { display: block; }
@@ -209,24 +170,9 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
         </div>
 
         <div id="areaMessaggi"></div>
-
         <div id="contenitorePost"></div>
-
-        <!-- Barra dei risultati spostata in basso -->
-        <div id="barraRisultatiBasso" class="barra-risultati-basso">
-    <div class="controlli-pagina" id="controlliPagina">
-        <select id="selettoreLimite">
-            <option value="5">5 per pagina</option>
-            <option value="10" selected>10 per pagina</option>
-            <option value="15">15 per pagina</option>
-            <option value="20">20 per pagina</option>
-            <option value="25">25 per pagina</option>
-        </select>
-        <button id="btnPrec">← Precedente</button>
-        <span id="infoPagina">Pagina 1 di 1</span>
-        <button id="btnSucc">Successiva →</button>
+        <div id="pannelloPaginazione" class="pannello-paginazione"></div>
     </div>
-</div>
 
     <div id="sfondoOverlay" class="sfondo-overlay">
         <div class="finestra-overlay">
@@ -257,6 +203,7 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
             Math.floor(Math.random() * 10) + 1 === 1;
 
         // --- Validazione ---
+        // Restituisce il messaggio di errore oppure stringa vuota se valido
         const validaRicerca = testo => {
             if (!testo || testo.trim() === "")
                 return "⚠️ Il campo di ricerca è obbligatorio.";
@@ -273,8 +220,7 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
                     <div class="spinner"></div>
                     <p>⏳ Caricamento in corso...</p>
                 </div>`;
-            // Nascondi la barra dei risultati durante il caricamento
-            $("barraRisultatiBasso").style.display = "none";
+            $("pannelloPaginazione").innerHTML = "";
         };
 
         const mostraMessaggio = (html, tipo = "info") => {
@@ -292,7 +238,6 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
                     <button id="pulsanteRetry">🔄 Riprova</button>
                 </div>`;
             $("pulsanteRetry").onclick = () => eseguiRicerca($("campoRicerca").value);
-            $("barraRisultatiBasso").style.display = "none";
         };
 
         // --- Caricamento post (con cache) ---
@@ -312,42 +257,21 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
             return testo.replace(re, "<mark>$1</mark>");
         };
 
-        // Aggiorna la barra dei risultati in basso (SEMPRE visibile)
-        const aggiornaBarraRisultati = (risultati, termine) => {
-    const n = risultati.length;
-    const totalePagine = Math.ceil(n / stato.elementiPerPagina);
-    
-    // Aggiorna le informazioni di pagina
-    if (n > 0) {
-        $("infoPagina").innerHTML = `Pagina ${stato.paginaCorrente} di ${totalePagine}`;
-        $("btnPrec").disabled = (stato.paginaCorrente === 1);
-        $("btnSucc").disabled = (stato.paginaCorrente === totalePagine);
-    } else {
-        $("infoPagina").innerHTML = `Nessun risultato`;
-        $("btnPrec").disabled = true;
-        $("btnSucc").disabled = true;
-    }
-    
-    // Mostra sempre la barra dei risultati
-    $("barraRisultatiBasso").style.display = "flex";
-};
-
         const visualizzaRisultati = (risultati, termine) => {
-            // Aggiorna la barra in basso
-            aggiornaBarraRisultati(risultati, termine);
-            
             if (!risultati.length) {
                 $("contenitorePost").innerHTML = `
                     <div class="messaggio-info">
                         📭 Nessun risultato trovato${termine ? ` per "${termine}"` : ""}
                         <p style="margin-top:10px;font-size:13px">Prova con un'altra parola chiave</p>
                     </div>`;
+                $("pannelloPaginazione").innerHTML = "";
                 return;
             }
-            
+
             const inizio = (stato.paginaCorrente - 1) * stato.elementiPerPagina;
             const pagina = risultati.slice(inizio, inizio + stato.elementiPerPagina);
-            
+            const totalePagine = Math.ceil(risultati.length / stato.elementiPerPagina);
+
             $("contenitorePost").innerHTML = pagina.map(post => {
                 const autore = stato.mappaUtenti.get(post.userId);
                 const nome = autore ? autore.name : `Utente #${post.userId}`;
@@ -359,78 +283,73 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
                         <button data-id="${post.id}">🔍 Dettagli</button>
                     </div>`;
             }).join("");
-        };
-        
-        // Gestisce il cambio del numero di elementi per pagina
-        const cambiaElementiPerPagina = (risultati, termine) => {
-            const nuovoValore = parseInt($("selettoreLimite").value);
-            if (stato.elementiPerPagina !== nuovoValore) {
-                stato.elementiPerPagina = nuovoValore;
-                stato.paginaCorrente = 1;
-                visualizzaRisultati(risultati, termine);
-            }
-        };
-        
-        // Gestisce la pagina precedente
-        const paginaPrecedente = (risultati, termine) => {
-            if (stato.paginaCorrente > 1) {
-                stato.paginaCorrente--;
-                visualizzaRisultati(risultati, termine);
-                // Scroll in cima ai risultati
-                document.getElementById("contenitorePost").scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-        };
-        
-        // Gestisce la pagina successiva
-        const paginaSuccessiva = (risultati, termine) => {
-            const totalePagine = Math.ceil(risultati.length / stato.elementiPerPagina);
-            if (stato.paginaCorrente < totalePagine) {
-                stato.paginaCorrente++;
-                visualizzaRisultati(risultati, termine);
-                // Scroll in cima ai risultati
-                document.getElementById("contenitorePost").scrollIntoView({ behavior: "smooth", block: "start" });
+
+            if (totalePagine > 1) {
+                $("pannelloPaginazione").innerHTML = `
+                    <select id="selettoreLimite">
+                        ${[5, 10, 15, 20, 25].map(n =>
+                            `<option ${n === stato.elementiPerPagina ? "selected" : ""}>${n} per pagina</option>`
+                        ).join("")}
+                    </select>
+                    <button id="btnPrec" ${stato.paginaCorrente === 1 ? "disabled" : ""}>← Precedente</button>
+                    <span>Pagina ${stato.paginaCorrente} di ${totalePagine}</span>
+                    <button id="btnSucc" ${stato.paginaCorrente === totalePagine ? "disabled" : ""}>Successiva →</button>`;
+
+                $("selettoreLimite").onchange = e => {
+                    stato.elementiPerPagina = parseInt(e.target.value);
+                    stato.paginaCorrente = 1;
+                    visualizzaRisultati(risultati, termine);
+                };
+                $("btnPrec").onclick = () => { stato.paginaCorrente--; visualizzaRisultati(risultati, termine); };
+                $("btnSucc").onclick = () => { stato.paginaCorrente++; visualizzaRisultati(risultati, termine); };
+            } else {
+                $("pannelloPaginazione").innerHTML = "";
             }
         };
 
         // --- Ricerca ---
         const eseguiRicerca = async testo => {
-            const errore = validaRicerca(testo);
-            if (errore) {
-                $("validazioneRicerca").textContent = errore;
+            const erroreValidazione = validaRicerca(testo);
+
+            // Errore di validazione: mostra solo sotto il campo, non in areaMessaggi
+            if (erroreValidazione) {
+                $("validazioneRicerca").textContent = erroreValidazione;
                 $("campoRicerca").focus();
                 return;
             }
-            
+
+            // Ripulisci errore di validazione precedente
             $("validazioneRicerca").textContent = "";
             mostraLoader();
-            
+
             try {
                 await delayCasuale();
+
                 if (simulaErroreServer()) throw new Error("ERRORE_SERVER");
-                
+
                 const posts = await getPost();
                 let risultati = stato.idUtenteFiltrato
                     ? posts.filter(p => p.userId === stato.idUtenteFiltrato)
                     : [...posts];
-                
+
                 const ricerca = testo.trim().toLowerCase();
                 risultati = risultati.filter(p =>
                     p.title.toLowerCase().includes(ricerca) ||
                     p.body.toLowerCase().includes(ricerca)
                 );
-                
+
                 stato.articoliCorrente = risultati;
                 stato.ricercaAttiva = testo;
                 stato.paginaCorrente = 1;
-                
-                if (risultati.length)
-                    mostraMessaggio(`✅ Trovati ${risultati.length} articoli per "${testo}".`, "successo");
-                
+
+                mostraMessaggio(
+                    risultati.length
+                        ? `✅ Trovati ${risultati.length} articoli per "${testo}".`
+                        : `📭 Nessun articolo trovato per "${testo}".`,
+                    risultati.length ? "successo" : "info"
+                );
                 visualizzaRisultati(risultati, testo.trim());
-                
-                // Ricollega gli eventi della barra dei risultati
-                collegaEventiBarraRisultati(risultati, testo.trim());
-                
+
             } catch (e) {
                 if (e.message === "ERRORE_SERVER") {
                     mostraMessaggio("⚠️ Errore temporaneo del server.", "errore");
@@ -438,11 +357,11 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
                 } else {
                     mostraMessaggio("❌ Errore nel caricamento dei dati. Riprova più tardi.", "errore");
                     $("contenitorePost").innerHTML = "";
-                    $("barraRisultatiBasso").style.display = "none";
+                    $("pannelloPaginazione").innerHTML = "";
                 }
             }
         };
-        
+
         // --- Carica post normalmente (senza ricerca) ---
         const caricaPost = async () => {
             mostraLoader();
@@ -455,39 +374,11 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
                 stato.ricercaAttiva = "";
                 stato.paginaCorrente = 1;
                 visualizzaRisultati(filtrati, "");
-                
-                // Ricollega gli eventi della barra dei risultati
-                collegaEventiBarraRisultati(filtrati, "");
             } catch {
                 mostraMessaggio("❌ Errore nel caricamento dei post.", "errore");
-                $("barraRisultatiBasso").style.display = "none";
             }
         };
-        
-        // Collega gli eventi della barra dei risultati
-        const collegaEventiBarraRisultati = (risultati, termine) => {
-            const selettoreLimite = $("selettoreLimite");
-            const btnPrec = $("btnPrec");
-            const btnSucc = $("btnSucc");
-            
-            // Rimuovi vecchi eventi e aggiungi nuovi
-            const nuovoSelettore = selettoreLimite.cloneNode(true);
-            selettoreLimite.parentNode.replaceChild(nuovoSelettore, selettoreLimite);
-            nuovoSelettore.id = "selettoreLimite";
-            nuovoSelettore.value = stato.elementiPerPagina.toString();
-            nuovoSelettore.onchange = () => cambiaElementiPerPagina(risultati, termine);
-            
-            const nuovoBtnPrec = btnPrec.cloneNode(true);
-            btnPrec.parentNode.replaceChild(nuovoBtnPrec, btnPrec);
-            nuovoBtnPrec.id = "btnPrec";
-            nuovoBtnPrec.onclick = () => paginaPrecedente(risultati, termine);
-            
-            const nuovoBtnSucc = btnSucc.cloneNode(true);
-            btnSucc.parentNode.replaceChild(nuovoBtnSucc, btnSucc);
-            nuovoBtnSucc.id = "btnSucc";
-            nuovoBtnSucc.onclick = () => paginaSuccessiva(risultati, termine);
-        };
-        
+
         // --- Reset ---
         const resetRicerca = () => {
             $("campoRicerca").value = "";
@@ -495,7 +386,7 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
             $("areaMessaggi").innerHTML = "";
             caricaPost();
         };
-        
+
         // --- Dettaglio post ---
         const mostraDettaglio = async idPost => {
             $("sfondoOverlay").classList.add("visibile");
@@ -522,7 +413,7 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
                 $("contenutoOverlay").innerHTML = '<p class="messaggio-errore">❌ Errore nel caricamento</p>';
             }
         };
-        
+
         // --- Inizializzazione ---
         const inizializza = async () => {
             mostraLoader();
@@ -535,44 +426,40 @@ mark { background-color: #fef9c3; padding: 0 2px; border-radius: 3px; }
                 await caricaPost();
             } catch {
                 mostraMessaggio("❌ Errore nell'inizializzazione.", "errore");
-                $("barraRisultatiBasso").style.display = "none";
             }
         };
-        
+
         // --- Event listeners ---
         $("pulsanteCerca").onclick = () => eseguiRicerca($("campoRicerca").value);
+
         $("pulsanteReset").onclick = resetRicerca;
-        
+
         $("campoRicerca").addEventListener("keypress", e => {
             if (e.key === "Enter") eseguiRicerca($("campoRicerca").value);
         });
-        
+
+        // Rimuovi errore di validazione mentre l'utente digita
         $("campoRicerca").addEventListener("input", () => {
             $("validazioneRicerca").textContent = "";
         });
-        
+
         $("pulsanteFiltra").onclick = () => {
             const val = $("selettoreUtente").value;
             stato.idUtenteFiltrato = val ? parseInt(val) : null;
             stato.paginaCorrente = 1;
-            if (stato.ricercaAttiva && stato.ricercaAttiva.length >= 3) {
-                eseguiRicerca(stato.ricercaAttiva);
-            } else {
-                caricaPost();
-            }
+            stato.ricercaAttiva ? eseguiRicerca(stato.ricercaAttiva) : caricaPost();
         };
-        
+
         $("contenitorePost").addEventListener("click", e => {
             const btn = e.target.closest("button[data-id]");
             if (btn) mostraDettaglio(parseInt(btn.dataset.id));
         });
-        
+
         const chiudiOverlay = () => $("sfondoOverlay").classList.remove("visibile");
         $("pulsanteChiudiOverlay").onclick = chiudiOverlay;
         $("sfondoOverlay").onclick = e => { if (e.target === $("sfondoOverlay")) chiudiOverlay(); };
-        
+
         inizializza();
     </script>
 </body>
-
 </html>
