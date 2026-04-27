@@ -1,0 +1,11 @@
+{
+  "name": "json-server-backend",
+  "private": true,
+  "dependencies": {
+    "json-server": "^0.17.4"
+  },
+  "scripts": {
+    "start": "json-server --watch db.json --host 0.0.0.0 --port $PORT --cors",
+    "server": "json-server --watch db.json --port 3000"
+  }
+}

@@ -1,0 +1,1868 @@
+<!-- Usando JSON-Server per simulare il back-end, crea una dashboard amministratore con la gestione completa di post (articoli), commenti, utenti e ruoli in un vero e proprio CRUD
+ (Create, Read, Update, Delete), con paginazione, ricerca e filtri dei campi. Crea anche un menù per passare da una sezione all’altra.
+ Mantenere la logica degli stati della UI vista nelle lezioni precedenti, perciò mostrare all’utente messaggi di carciamento, errori, risultati vuoti e successo. 
+ Durante il caricamento disabilitare il pulsante per impedire all’utente di rieffettuare la richiesta mentre c’è qualcosa già in corso.
+ Extra: crea un campo “isActive” su tutte le risorse per la cancellazione logica, se il valore è false non si deve vedere ma ci deve essere una pagina “cestino” per ognuna 
+ dove si può recupera un elemento cancellato. -->
+
+<!doctype html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Admin - Gestione Contenuti</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Georgia, "Times New Roman", serif;
+            background: #fdfcf9;
+            color: #111;
+            line-height: 1.6;
+            padding: 30px;
+        }
+
+        .contenitore-dashboard {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .barra-laterale {
+            width: 260px;
+            flex-shrink: 0;
+            background: #fff;
+            border: 1px solid #000;
+            padding: 20px 0;
+            height: fit-content;
+            position: sticky;
+            top: 30px;
+        }
+
+        .intestazione-laterale {
+            padding: 0 20px 15px 20px;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 15px;
+        }
+
+        .intestazione-laterale h2 {
+            font-size: 20px;
+            letter-spacing: -0.3px;
+        }
+
+        .intestazione-laterale p {
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .voce-menu {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .voce-menu:hover {
+            background: #f5f5f5;
+            border-left-color: #999;
+        }
+
+        .voce-menu.attivo {
+            background: #f0f0f0;
+            border-left-color: #000;
+            font-weight: bold;
+        }
+
+        .indicatore-numero {
+            margin-left: auto;
+            background: #eee;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        .sezione-menu {
+            margin-bottom: 10px;
+        }
+
+        .etichetta-sezione {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #999;
+            padding: 10px 20px 5px;
+        }
+
+        .contenuto-principale {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .barra-superiore {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .barra-superiore h1 {
+            font-size: 32px;
+        }
+
+        .riga-statistiche {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .card-statistica {
+            border: 1px solid #ddd;
+            padding: 15px;
+            background: #fff;
+        }
+
+        .etichetta-statistica {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .valore-statistica {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .barra-strumenti {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .contenitore-ricerca {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .contenitore-ricerca input {
+            width: 100%;
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .filtro-select {
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            font-family: inherit;
+            background: #fff;
+        }
+
+        .contenitore-tabella {
+            border: 1px solid #ddd;
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #fafafa;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover td {
+            background: #f9f9f9;
+        }
+
+        .pulsante {
+            background: none;
+            border: 1px solid #000;
+            padding: 6px 14px;
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pulsante:hover:not(:disabled) {
+            background: #000;
+            color: #fff;
+        }
+
+        .pulsante:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .pulsante-piccolo {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+
+        .pulsante-primario {
+            background: #000;
+            color: #fff;
+        }
+
+        .pulsante-primario:hover:not(:disabled) {
+            background: #333;
+        }
+
+        .pulsante-pericolo {
+            border-color: #c00;
+            color: #c00;
+        }
+
+        .pulsante-pericolo:hover:not(:disabled) {
+            background: #c00;
+            color: #fff;
+        }
+
+        .pulsante-successo {
+            border-color: #060;
+            color: #060;
+        }
+
+        .pulsante-successo:hover:not(:disabled) {
+            background: #060;
+            color: #fff;
+        }
+
+        .pulsante-retry {
+            border-color: #f90;
+            color: #f90;
+        }
+
+        .pulsante-retry:hover:not(:disabled) {
+            background: #f90;
+            color: #fff;
+        }
+
+        .azioni-colonna {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .etichetta {
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        .etichetta-attivo {
+            background: #e6f4ea;
+            color: #1e7e34;
+            border: 1px solid #b3e0b3;
+        }
+
+        .etichetta-inattivo {
+            background: #fef3f3;
+            color: #c00;
+            border: 1px solid #fcc;
+        }
+
+        .paginazione {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            padding: 15px 0;
+            border-top: 1px solid #eee;
+        }
+
+        .selettore-pagina {
+            border: 1px solid #ccc;
+            padding: 5px 8px;
+            font-family: monospace;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .info-pagina {
+            font-size: 12px;
+            color: #666;
+            margin-left: 15px;
+        }
+
+        .gruppo-paginazione {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .avviso-cestino {
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #92400e;
+        }
+
+        .sfondo-modale {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .sfondo-modale.apri {
+            display: flex;
+        }
+
+        .modale {
+            background: #fff;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid #000;
+            padding: 25px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modale h3 {
+            font-size: 22px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .chiusura-modale {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            margin-top: -10px;
+        }
+
+        .chiusura-modale:hover {
+            opacity: 0.7;
+        }
+
+        .gruppo-form {
+            margin-bottom: 15px;
+        }
+
+        .gruppo-form label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .gruppo-form input,
+        .gruppo-form textarea,
+        .gruppo-form select {
+            width: 100%;
+            border: 1px solid #ccc;
+            padding: 8px 10px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .gruppo-form input:focus,
+        .gruppo-form textarea:focus,
+        .gruppo-form select:focus {
+            outline: none;
+            border-color: #000;
+        }
+
+        .errore-campo {
+            color: #c00;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        .azioni-modale {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        mark {
+            background: #fef9c3;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+
+        .notifica-volante {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1100;
+            padding: 10px 16px;
+            border: 1px solid;
+            font-family: monospace;
+            font-size: 12px;
+            transition: opacity 0.3s;
+            max-width: 350px;
+        }
+
+        .messaggio-successo {
+            background: #e6f4ea;
+            border-color: #b3e0b3;
+            color: #1e7e34;
+        }
+
+        .messaggio-errore {
+            background: #fef3f3;
+            border-color: #fcc;
+            color: #c00;
+        }
+
+        .messaggio-caricamento {
+            background: #dbeafe;
+            border-color: #93c5fd;
+            color: #1e3a8a;
+        }
+
+        .stato-caricamento {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #ccc;
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .stato-errore {
+            background: #fef3f3;
+            border: 1px solid #fcc;
+            color: #c00;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stato-vuoto {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            color: #666;
+            text-align: center;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+        }
+
+        .contenitore-retry {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .numeri-pagina {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .numero-pagina {
+            min-width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .numero-pagina:hover:not(:disabled) {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+
+        .numero-pagina.attivo {
+            background: #000;
+            color: #fff;
+            border-color: #000;
+            cursor: default;
+            pointer-events: none;
+            opacity: 1;
+        }
+
+        .numero-pagina:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="contenitore-dashboard">
+        <aside class="barra-laterale">
+            <div class="intestazione-laterale">
+                <h2>📋 Pannello Admin</h2>
+                <p>Gestione contenuti</p>
+            </div>
+            <div class="sezione-menu">
+                <div class="etichetta-sezione">CONTENUTI</div>
+                <div class="voce-menu attivo" data-sezione="articoli">
+                    📝 Articoli
+                    <span class="indicatore-numero" id="conteggio-articoli">0</span>
+                </div>
+                <div class="voce-menu" data-sezione="commenti">
+                    💬 Commenti
+                    <span class="indicatore-numero" id="conteggio-commenti">0</span>
+                </div>
+            </div>
+            <div class="sezione-menu">
+                <div class="etichetta-sezione">PERSONE</div>
+                <div class="voce-menu" data-sezione="utenti">
+                    👥 Utenti
+                    <span class="indicatore-numero" id="conteggio-utenti">0</span>
+                </div>
+                <div class="voce-menu" data-sezione="ruoli">
+                    🎭 Ruoli
+                    <span class="indicatore-numero" id="conteggio-ruoli">0</span>
+                </div>
+            </div>
+            <div class="sezione-menu">
+                <div class="etichetta-sezione">CESTINO</div>
+                <div class="voce-menu" data-sezione="cestino-articoli">
+                    🗑️ Articoli
+                    <span class="indicatore-numero" id="conteggio-cestino-articoli">0</span>
+                </div>
+                <div class="voce-menu" data-sezione="cestino-commenti">
+                    🗑️ Commenti
+                    <span class="indicatore-numero" id="conteggio-cestino-commenti">0</span>
+                </div>
+                <div class="voce-menu" data-sezione="cestino-utenti">
+                    🗑️ Utenti
+                    <span class="indicatore-numero" id="conteggio-cestino-utenti">0</span>
+                </div>
+                <div class="voce-menu" data-sezione="cestino-ruoli">
+                    🗑️ Ruoli
+                    <span class="indicatore-numero" id="conteggio-cestino-ruoli">0</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="contenuto-principale">
+            <div class="barra-superiore">
+                <h1 id="titolo-pagina">Articoli</h1>
+            </div>
+            <div id="area-contenuto"></div>
+        </main>
+    </div>
+
+    <!-- POPUP CONFERMA -->
+    <div id="popup-conferma" style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      ">
+        <div style="
+          background: #fff;
+          border: 1px solid #000;
+          padding: 25px;
+          max-width: 420px;
+          width: 100%;
+        ">
+            <h3 id="popup-titolo" style="font-size: 18px; margin-bottom: 12px"></h3>
+            <p id="popup-messaggio" style="font-size: 14px; color: #444; margin-bottom: 20px"></p>
+            <div style="display: flex; gap: 10px; justify-content: flex-end">
+                <button class="pulsante" id="popup-annulla">Annulla</button>
+                <button class="pulsante" id="popup-conferma-btn">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE CRUD -->
+    <div class="sfondo-modale" id="sfondo-modale">
+        <div class="modale">
+            <button class="chiusura-modale" id="chiusura-modale">✕</button>
+            <h3 id="titolo-modale">Modulo</h3>
+            <div id="corpo-modale"></div>
+            <div class="azioni-modale">
+                <button class="pulsante" id="annulla-modale">Annulla</button>
+                <button class="pulsante pulsante-primario" id="salva-modale">
+                    Salva
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const stato = {
+            sezione: "articoli",
+            ricerca: "",
+            filtri: {},
+            pagina: 1,
+            elementiPerPagina: 5,
+            caricamento: false,
+            ultimoErrore: null,
+            operazioneFallita: null,
+        };
+
+        let callbackSalvataggio = null;
+        const API_BASE = "http://localhost:3000";
+        const datiGlobali = { articoli: [], commenti: [], utenti: [], ruoli: [] };
+
+        const delayCasuale = () =>
+            new Promise((r) => setTimeout(r, Math.random() * 3000 + 1000));
+
+        const simulaErroreServer = () => Math.floor(Math.random() * 10) + 1 === 1;
+
+        function evidenziaTesto(testo, ricerca) {
+            if (!ricerca || ricerca.length < 3) return String(testo || "");
+            const re = new RegExp(
+                `(${ricerca.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+                "gi",
+            );
+            return String(testo || "").replace(re, "<mark>$1</mark>");
+        }
+
+        function ottieniNomeDaId(array, id, nomeCampo, etichettaFallback) {
+            if (!id) return `${etichettaFallback} sconosciuto`;
+            const item = array.find((x) => x.id === id);
+            return item ? item[nomeCampo] : `${etichettaFallback} #${id}`;
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function impostaCaricamento(attivo) {
+            stato.caricamento = attivo;
+
+            // Disabilito/abilito i pulsanti "di azione", NON quelli di paginazione
+            const bottoniAzione = document.querySelectorAll(
+                ".pulsante:not(#chiusura-modale):not(#annulla-modale):not(#pulsante-prec):not(#pulsante-succ)",
+            );
+
+            if (attivo) {
+                bottoniAzione.forEach((btn) => {
+                    btn.dataset.disabledPrimaDelLoading = btn.disabled ? "1" : "0";
+                    btn.disabled = true;
+                });
+            } else {
+                bottoniAzione.forEach((btn) => {
+                    const eraDisabilitato = btn.dataset.disabledPrimaDelLoading === "1";
+                    btn.disabled = eraDisabilitato;
+                    delete btn.dataset.disabledPrimaDelLoading;
+                });
+            }
+
+            // I numeri pagina li blocchiamo via CSS/pointer-events sul contenitore, così non tocchiamo "disabled"
+            const paginazione = document.querySelector(".paginazione");
+            if (paginazione) {
+                paginazione.style.pointerEvents = attivo ? "none" : "";
+                paginazione.style.opacity = attivo ? "0.6" : "";
+            }
+
+            // Menu laterale bloccato durante loading
+            document.querySelectorAll(".voce-menu").forEach((item) => {
+                item.style.pointerEvents = attivo ? "none" : "";
+                item.style.opacity = attivo ? "0.6" : "";
+            });
+        }
+
+        function mostraArticoloCompleto(articolo) {
+            const commentiAssociati = datiGlobali.commenti.filter(
+                (c) => c.isActive && c.postId === articolo.id,
+            );
+
+            const commentiHtml = commentiAssociati.length
+                ? commentiAssociati
+                    .map(
+                        (c) => `
+        <div style="border-top:1px solid #eee; padding:10px 0;">
+          <div style="font-size:12px; color:#666; margin-bottom:4px;">
+            <strong>${escapeHtml(c.nome || "Anonimo")}</strong>
+            <span style="margin-left:8px;">${escapeHtml(c.email || "")}</span>
+          </div>
+          <div style="white-space:pre-wrap; line-height:1.5;">
+            ${escapeHtml(c.corpo || "")}
+          </div>
+        </div>
+      `,
+                    )
+                    .join("")
+                : `<div style="color:#666; font-size:13px;">Nessun commento per questo articolo.</div>`;
+
+            document.getElementById("titolo-modale").textContent =
+                articolo.titolo || "Articolo";
+
+            document.getElementById("corpo-modale").innerHTML = `
+    <div style="font-size:12px; color:#666; margin-bottom:10px;">
+Autore: <strong>${escapeHtml(ottieniNomeDaId(datiGlobali.utenti, articolo.utenteId, "nome", "Utente"))}</strong>
+      Data: <strong>${escapeHtml(articolo.creatoIl || "—")}</strong>
+    </div>
+
+    <div style="white-space: pre-wrap; line-height: 1.6; padding-bottom:12px;">
+      ${escapeHtml(articolo.corpo || "")}
+    </div>
+
+    <h4 style="margin-top:10px; padding-top:12px; border-top:2px solid #000;">
+      Commenti (${commentiAssociati.length})
+    </h4>
+
+    <div style="margin-top:8px;">
+      ${commentiHtml}
+    </div>
+  `;
+
+            // sola lettura
+            callbackSalvataggio = null;
+            document.getElementById("salva-modale").style.display = "none";
+            document.getElementById("sfondo-modale").classList.add("apri");
+        }
+
+        let timeoutNotifica;
+        function mostraNotifica(messaggio, tipo = "successo") {
+            let n = document.getElementById("notifica-volante");
+            if (n) {
+                clearTimeout(timeoutNotifica);
+                n.remove();
+            }
+            n = document.createElement("div");
+            n.id = "notifica-volante";
+            n.className = `notifica-volante messaggio-${tipo}`;
+            n.textContent = messaggio;
+            n.style.opacity = "1";
+            document.body.appendChild(n);
+            if (tipo !== "caricamento") {
+                timeoutNotifica = setTimeout(() => {
+                    n.style.opacity = "0";
+                    setTimeout(() => n.parentNode && n.remove(), 300);
+                }, 3000);
+            }
+        }
+
+        function rimuoviNotifica() {
+            const n = document.getElementById("notifica-volante");
+            if (n) {
+                clearTimeout(timeoutNotifica);
+                n.remove();
+            }
+        }
+
+        async function chiamataApi(endpoint, metodo = "GET", dati = null) {
+            // Simula errore SOLO sui GET (così non blocchi salvataggi POST/PUT/DELETE)
+            if (metodo === "GET" && simulaErroreServer()) {
+                throw new Error("Errore del server. Riprova più tardi.");
+            }
+
+            // (opzionale) Simula rete lenta
+            // await delayCasuale();
+
+            const opzioni = {
+                method: metodo,
+                headers: { "Content-Type": "application/json" },
+            };
+            if (dati) opzioni.body = JSON.stringify(dati);
+
+            try {
+                const risposta = await fetch(`${API_BASE}/${endpoint}`, opzioni);
+
+                if (!risposta.ok) {
+                    if (risposta.status === 404)
+                        throw new Error("Elemento non trovato (404)");
+                    if (risposta.status === 500)
+                        throw new Error("Errore interno del server (500)");
+                    throw new Error(
+                        `Errore ${risposta.status}: ${risposta.statusText}`,
+                    );
+                }
+
+                if (metodo === "DELETE") return true;
+                return await risposta.json();
+            } catch (errore) {
+                if (errore.message === "Failed to fetch") {
+                    throw new Error(
+                        "Server non raggiungibile. Verifica che json-server sia attivo su porta 3000",
+                    );
+                }
+                throw errore; // IMPORTANTISSIMO
+            }
+        }
+
+        function aggiornaIndicatori() {
+            document.getElementById("conteggio-articoli").textContent =
+                datiGlobali.articoli.filter((a) => a.isActive).length;
+            document.getElementById("conteggio-commenti").textContent =
+                datiGlobali.commenti.filter((c) => c.isActive).length;
+            document.getElementById("conteggio-utenti").textContent =
+                datiGlobali.utenti.filter((u) => u.isActive).length;
+            document.getElementById("conteggio-ruoli").textContent =
+                datiGlobali.ruoli.filter((r) => r.isActive).length;
+            document.getElementById("conteggio-cestino-articoli").textContent =
+                datiGlobali.articoli.filter((a) => !a.isActive).length;
+            document.getElementById("conteggio-cestino-commenti").textContent =
+                datiGlobali.commenti.filter((c) => !c.isActive).length;
+            document.getElementById("conteggio-cestino-utenti").textContent =
+                datiGlobali.utenti.filter((u) => !u.isActive).length;
+            document.getElementById("conteggio-cestino-ruoli").textContent =
+                datiGlobali.ruoli.filter((r) => !r.isActive).length;
+        }
+
+        function ottieniElementiFiltrati(tipo, cestino) {
+            const config = CONFIGURAZIONE_SEZIONI[tipo];
+            let elementi = config
+                .dati()
+                .filter((item) => (cestino ? !item.isActive : item.isActive));
+
+            const ricerca = (stato.ricerca || "").toLowerCase();
+            if (ricerca && ricerca.length >= 3) {
+                elementi = elementi.filter((item) =>
+                    config.ricercaCampi.some((campo) =>
+                        String(item[campo] || "")
+                            .toLowerCase()
+                            .includes(ricerca),
+                    ),
+                );
+            }
+
+            config.filtri.forEach((filtro) => {
+                const valore = stato.filtri[filtro.campo];
+                if (valore)
+                    elementi = elementi.filter(
+                        (item) => item[filtro.campo] === parseInt(valore),
+                    );
+            });
+
+            return elementi;
+        }
+
+        function correggiPaginazione(totaleRisultati) {
+            const pagineTotali = Math.max(
+                1,
+                Math.ceil(totaleRisultati / stato.elementiPerPagina),
+            );
+            if (stato.pagina > pagineTotali) stato.pagina = pagineTotali;
+            if (stato.pagina < 1) stato.pagina = 1;
+            return pagineTotali;
+        }
+
+        function generaPaginazione(totale, paginaCorrente, pagineTotali) {
+            const pagina = Number(paginaCorrente) || 1;
+            const totPagine = Math.max(1, Number(pagineTotali) || 1);
+
+            const disabilitaPrec = pagina <= 1;
+            const disabilitaSucc = pagina >= totPagine;
+
+            const opzioni = [5, 10, 15, 20]
+                .map(
+                    (q) =>
+                        `<option value="${q}" ${q === stato.elementiPerPagina ? "selected" : ""}>${q} per pagina</option>`,
+                )
+                .join("");
+
+            let numeriHtml = "";
+            for (let i = 1; i <= totPagine; i++) {
+                numeriHtml += `
+      <button class="numero-pagina ${i === pagina ? "attivo" : ""}"
+        data-pagina="${i}"
+        ${i === pagina ? "disabled" : ""}>
+        ${i}
+      </button>`;
+            }
+
+            return `
+    <div class="paginazione">
+      <button class="pulsante" id="pulsante-prec" ${disabilitaPrec ? "disabled" : ""}>
+        ← Precedente
+      </button>
+
+      <div class="numeri-pagina">${numeriHtml}</div>
+
+      <button class="pulsante" id="pulsante-succ" ${disabilitaSucc ? "disabled" : ""}>
+        Successiva →
+      </button>
+
+      <select id="selettore-pagina" class="selettore-pagina">${opzioni}</select>
+
+      <span class="info-pagina">
+        Pagina ${pagina} di ${totPagine} · ${totale} risultati
+      </span>
+    </div>`;
+        }
+
+        const CONFIGURAZIONE_SEZIONI = {
+            articoli: {
+                endpoint: "posts",
+                nome: "Articoli",
+                nomeSingolare: "Articolo",
+                dati: () => datiGlobali.articoli,
+                ricercaCampi: ["titolo", "corpo"],
+                filtri: [
+                    {
+                        id: "filtro-utente",
+                        etichetta: "Tutti gli autori",
+                        campo: "utenteId",
+                        opzioni: () =>
+                            datiGlobali.utenti
+                                .filter((u) => u.isActive)
+                                .map((u) => ({ valore: u.id, testo: u.nome })),
+                    },
+                ],
+                statistiche: (dati) => ({
+                    attivi: dati.filter((d) => d.isActive).length,
+                    cestino: dati.filter((d) => !d.isActive).length,
+                    extra: new Set(
+                        dati.filter((d) => d.isActive).map((d) => d.utenteId),
+                    ).size,
+                    extraEtichetta: "Autori unici",
+                }),
+                colonne: [
+                    {
+                        campo: "Titolo",
+                        larghezza: "35%",
+                        funzione: (item, ricerca) => evidenziaTesto(item.titolo, ricerca),
+                    },
+                    {
+                        campo: "Autore",
+                        larghezza: "20%",
+                        funzione: (item) =>
+                            ottieniNomeDaId(
+                                datiGlobali.utenti,
+                                item.utenteId,
+                                "nome",
+                                "Utente",
+                            ),
+                    },
+                    {
+                        campo: "Creato il",
+                        larghezza: "15%",
+                        funzione: (item) => item.creatoIl || "—",
+                    },
+                    {
+                        campo: "Stato",
+                        larghezza: "10%",
+                        funzione: (item) =>
+                            `<span class="etichetta ${item.isActive ? "etichetta-attivo" : "etichetta-inattivo"}">${item.isActive ? "attivo" : "cestino"}</span>`,
+                    },
+                ],
+                nuovoElemento: (dati) => ({
+                    ...dati,
+                    creatoIl: new Date().toISOString().split("T")[0],
+                    isActive: true,
+                }),
+            },
+            commenti: {
+                endpoint: "comments",
+                nome: "Commenti",
+                nomeSingolare: "Commento",
+                dati: () => datiGlobali.commenti,
+                ricercaCampi: ["nome", "email", "corpo"],
+                filtri: [
+                    {
+                        id: "filtro-post",
+                        etichetta: "Tutti gli articoli",
+                        campo: "postId",
+                        opzioni: () =>
+                            datiGlobali.articoli
+                                .filter((a) => a.isActive)
+                                .map((a) => ({
+                                    valore: a.id,
+                                    testo: `${a.id} - ${a.titolo}`,
+                                })),
+                    },
+                ],
+                statistiche: (dati) => ({
+                    attivi: dati.filter((d) => d.isActive).length,
+                    cestino: dati.filter((d) => !d.isActive).length,
+                    extra: new Set(dati.filter((d) => d.isActive).map((d) => d.postId))
+                        .size,
+                    extraEtichetta: "Articoli commentati",
+                }),
+                colonne: [
+                    {
+                        campo: "Nome",
+                        larghezza: "18%",
+                        funzione: (item, ricerca) => evidenziaTesto(item.nome, ricerca),
+                    },
+                    {
+                        campo: "Email",
+                        larghezza: "22%",
+                        funzione: (item, ricerca) => evidenziaTesto(item.email, ricerca),
+                    },
+                    {
+                        campo: "Articolo",
+                        larghezza: "22%",
+                        funzione: (item) =>
+                            ottieniNomeDaId(
+                                datiGlobali.articoli,
+                                item.postId,
+                                "titolo",
+                                "Articolo",
+                            ),
+                    },
+                    {
+                        campo: "Commento",
+                        larghezza: "22%",
+                        funzione: (item, ricerca) =>
+                            evidenziaTesto(
+                                String(item.corpo || "").substring(0, 60) +
+                                (String(item.corpo || "").length > 60 ? "…" : ""),
+                                ricerca,
+                            ),
+                    },
+                    {
+                        campo: "Stato",
+                        larghezza: "16%",
+                        funzione: (item) =>
+                            `<span class="etichetta ${item.isActive ? "etichetta-attivo" : "etichetta-inattivo"}">${item.isActive ? "attivo" : "cestino"}</span>`,
+                    },
+                ],
+                nuovoElemento: (dati) => ({ ...dati, isActive: true }),
+            },
+            utenti: {
+                endpoint: "users",
+                nome: "Utenti",
+                nomeSingolare: "Utente",
+                dati: () => datiGlobali.utenti,
+                ricercaCampi: ["nome", "username", "email"],
+                filtri: [
+                    {
+                        id: "filtro-ruolo",
+                        etichetta: "Tutti i ruoli",
+                        campo: "ruoloId",
+                        opzioni: () =>
+                            datiGlobali.ruoli
+                                .filter((r) => r.isActive)
+                                .map((r) => ({ valore: r.id, testo: r.nome })),
+                    },
+                ],
+                statistiche: (dati) => ({
+                    attivi: dati.filter((d) => d.isActive).length,
+                    cestino: dati.filter((d) => !d.isActive).length,
+                    extra: new Set(dati.filter((d) => d.isActive).map((d) => d.ruoloId))
+                        .size,
+                    extraEtichetta: "Ruoli assegnati",
+                }),
+                colonne: [
+                    {
+                        campo: "Nome",
+                        larghezza: "25%",
+                        funzione: (item, ricerca) => evidenziaTesto(item.nome, ricerca),
+                    },
+                    {
+                        campo: "Username",
+                        larghezza: "18%",
+                        funzione: (item, ricerca) =>
+                            evidenziaTesto(item.username, ricerca),
+                    },
+                    {
+                        campo: "Email",
+                        larghezza: "27%",
+                        funzione: (item, ricerca) => evidenziaTesto(item.email, ricerca),
+                    },
+                    {
+                        campo: "Ruolo",
+                        larghezza: "14%",
+                        funzione: (item) =>
+                            ottieniNomeDaId(
+                                datiGlobali.ruoli,
+                                item.ruoloId,
+                                "nome",
+                                "Ruolo",
+                            ),
+                    },
+                    {
+                        campo: "Stato",
+                        larghezza: "16%",
+                        funzione: (item) =>
+                            `<span class="etichetta ${item.isActive ? "etichetta-attivo" : "etichetta-inattivo"}">${item.isActive ? "attivo" : "cestino"}</span>`,
+                    },
+                ],
+                nuovoElemento: (dati) => ({ ...dati, isActive: true }),
+            },
+            ruoli: {
+                endpoint: "roles",
+                nome: "Ruoli",
+                nomeSingolare: "Ruolo",
+                dati: () => datiGlobali.ruoli,
+                ricercaCampi: ["nome", "descrizione"],
+                filtri: [],
+                statistiche: (dati) => ({
+                    attivi: dati.filter((d) => d.isActive).length,
+                    cestino: dati.filter((d) => !d.isActive).length,
+                    extra: dati.filter((d) => d.isActive).length,
+                    extraEtichetta: "Ruoli attivi",
+                }),
+                colonne: [
+                    {
+                        campo: "Nome",
+                        larghezza: "20%",
+                        funzione: (item, ricerca) => evidenziaTesto(item.nome, ricerca),
+                    },
+                    {
+                        campo: "Descrizione",
+                        larghezza: "45%",
+                        funzione: (item, ricerca) =>
+                            evidenziaTesto(item.descrizione, ricerca),
+                    },
+                    {
+                        campo: "Utenti",
+                        larghezza: "18%",
+                        funzione: (item) =>
+                            `${datiGlobali.utenti.filter((u) => u.isActive && u.ruoloId === item.id).length} utenti`,
+                    },
+                    {
+                        campo: "Stato",
+                        larghezza: "17%",
+                        funzione: (item) =>
+                            `<span class="etichetta ${item.isActive ? "etichetta-attivo" : "etichetta-inattivo"}">${item.isActive ? "attivo" : "cestino"}</span>`,
+                    },
+                ],
+                nuovoElemento: (dati) => ({ ...dati, isActive: true }),
+            },
+        };
+
+        function mostraPopupConferma(
+            titolo,
+            messaggio,
+            testoBtn = "Conferma",
+            pericoloso = false,
+        ) {
+            return new Promise((resolve) => {
+                const popup = document.getElementById("popup-conferma");
+                document.getElementById("popup-titolo").textContent = titolo;
+                document.getElementById("popup-messaggio").textContent = messaggio;
+
+                const btnConferma = document.getElementById("popup-conferma-btn");
+                btnConferma.textContent = testoBtn;
+                btnConferma.className = `pulsante ${pericoloso ? "pulsante-pericolo" : "pulsante-primario"}`;
+
+                popup.style.display = "flex";
+
+                // reset handlers
+                const nuovoBtnConferma = btnConferma.cloneNode(true);
+                const nuovoBtnAnnulla = document
+                    .getElementById("popup-annulla")
+                    .cloneNode(true);
+                btnConferma.replaceWith(nuovoBtnConferma);
+                document.getElementById("popup-annulla").replaceWith(nuovoBtnAnnulla);
+
+                const chiudi = (risultato) => {
+                    popup.style.display = "none";
+                    resolve(risultato);
+                };
+
+                document.getElementById("popup-conferma-btn").onclick = () =>
+                    chiudi(true);
+                document.getElementById("popup-annulla").onclick = () =>
+                    chiudi(false);
+                popup.onclick = (e) => {
+                    if (e.target === popup) chiudi(false);
+                };
+            });
+        }
+
+        function mostraBottoneRetry() {
+            const areaContenuto = document.getElementById("area-contenuto");
+            if (!areaContenuto || document.getElementById("bottone-retry")) return;
+
+            areaContenuto.insertAdjacentHTML(
+                "beforeend",
+                `
+      <div class="contenitore-retry">
+        <button class="pulsante pulsante-retry" id="bottone-retry">🔄 Riprova ultima operazione</button>
+        <button class="pulsante" id="bottone-annulla-retry" style="margin-left:10px">✕ Annulla</button>
+      </div>`,
+            );
+
+            document
+                .getElementById("bottone-retry")
+                .addEventListener("click", async () => {
+                    if (!stato.operazioneFallita) {
+                        mostraNotifica("Nessuna operazione da riprovare", "errore");
+                        return;
+                    }
+
+                    const { azione, id, elemento, config } = stato.operazioneFallita;
+                    impostaCaricamento(true);
+                    mostraNotifica("🔄 Riprovo operazione...", "caricamento");
+
+                    try {
+                        if (azione === "elimina-logico" && elemento) {
+                            const statoOriginale = elemento.isActive;
+                            elemento.isActive = false;
+                            try {
+                                await chiamataApi(
+                                    `${config.endpoint}/${id}`,
+                                    "PUT",
+                                    elemento,
+                                );
+                            } catch (err) {
+                                elemento.isActive = statoOriginale;
+                                throw err;
+                            }
+                        }
+
+                        if (azione === "ripristina" && elemento) {
+                            const statoOriginale = elemento.isActive;
+                            elemento.isActive = true;
+                            try {
+                                await chiamataApi(
+                                    `${config.endpoint}/${id}`,
+                                    "PUT",
+                                    elemento,
+                                );
+                            } catch (err) {
+                                elemento.isActive = statoOriginale;
+                                throw err;
+                            }
+                        }
+
+                        if (azione === "elimina-definitivo") {
+                            await chiamataApi(`${config.endpoint}/${id}`, "DELETE");
+                            const idx = config.dati().findIndex((e) => e.id === id);
+                            if (idx !== -1) config.dati().splice(idx, 1);
+                        }
+
+                        stato.operazioneFallita = null;
+                        aggiornaIndicatori();
+                        renderizzaDashboard();
+                        mostraNotifica(
+                            "✓ Operazione completata al secondo tentativo",
+                            "successo",
+                        );
+                    } catch (errore) {
+                        mostraNotifica(
+                            `❌ Riprovato ma fallito: ${errore.message}`,
+                            "errore",
+                        );
+                    } finally {
+                        impostaCaricamento(false);
+                    }
+                });
+
+            document
+                .getElementById("bottone-annulla-retry")
+                .addEventListener("click", () => {
+                    stato.operazioneFallita = null;
+                    stato.ultimoErrore = null;
+                    document.getElementById("bottone-retry")?.parentElement.remove();
+                    mostraNotifica("Operazione annullata", "successo");
+                });
+        }
+
+        const CAMPI_FORM = {
+            articoli: [
+                { nome: "titolo", etichetta: "Titolo", tipo: "text" },
+                { nome: "corpo", etichetta: "Contenuto", tipo: "textarea" },
+                {
+                    nome: "utenteId",
+                    etichetta: "Autore",
+                    tipo: "select",
+                    opzioni: () =>
+                        datiGlobali.utenti
+                            .filter((u) => u.isActive)
+                            .map((u) => ({ valore: u.id, testo: u.nome })),
+                },
+            ],
+            commenti: [
+                {
+                    nome: "postId",
+                    etichetta: "Articolo",
+                    tipo: "select",
+                    opzioni: () =>
+                        datiGlobali.articoli
+                            .filter((a) => a.isActive)
+                            .map((a) => ({ valore: a.id, testo: `${a.id} - ${a.titolo}` })),
+                },
+                { nome: "nome", etichetta: "Nome", tipo: "text" },
+                { nome: "email", etichetta: "Email", tipo: "email" },
+                { nome: "corpo", etichetta: "Commento", tipo: "textarea" },
+            ],
+            utenti: [
+                { nome: "nome", etichetta: "Nome completo", tipo: "text" },
+                { nome: "username", etichetta: "Username", tipo: "text" },
+                { nome: "email", etichetta: "Email", tipo: "email" },
+                {
+                    nome: "ruoloId",
+                    etichetta: "Ruolo",
+                    tipo: "select",
+                    opzioni: () =>
+                        datiGlobali.ruoli
+                            .filter((r) => r.isActive)
+                            .map((r) => ({ valore: r.id, testo: r.nome })),
+                },
+            ],
+            ruoli: [
+                { nome: "nome", etichetta: "Nome ruolo", tipo: "text" },
+                { nome: "descrizione", etichetta: "Descrizione", tipo: "textarea" },
+            ],
+        };
+
+        function apriModaleGenerico(tipo, elemento) {
+            const config = CONFIGURAZIONE_SEZIONI[tipo];
+            const isModifica = !!elemento;
+            const campi = CAMPI_FORM[tipo];
+
+            document.getElementById("titolo-modale").textContent = isModifica
+                ? `Modifica ${config.nomeSingolare}`
+                : `Nuovo ${config.nomeSingolare}`;
+
+            let formHtml = "";
+            campi.forEach((campo) => {
+                if (campo.tipo === "select") {
+                    const opzioni = campo.opzioni();
+                    formHtml += `<div class="gruppo-form"><label>${campo.etichetta} *</label>
+          <select id="campo_${campo.nome}">
+            <option value="">— Seleziona —</option>
+            ${opzioni.map((opt) => `<option value="${opt.valore}" ${elemento && elemento[campo.nome] === opt.valore ? "selected" : ""}>${opt.testo}</option>`).join("")}
+          </select></div>`;
+                } else if (campo.tipo === "textarea") {
+                    formHtml += `<div class="gruppo-form"><label>${campo.etichetta} *</label>
+          <textarea id="campo_${campo.nome}" rows="5">${elemento?.[campo.nome] || ""}</textarea></div>`;
+                } else {
+                    formHtml += `<div class="gruppo-form"><label>${campo.etichetta} *</label>
+          <input type="${campo.tipo}" id="campo_${campo.nome}" value="${elemento?.[campo.nome] || ""}"></div>`;
+                }
+            });
+
+            formHtml += `<div id="errori-form"></div>`;
+            document.getElementById("corpo-modale").innerHTML = formHtml;
+
+            callbackSalvataggio = async () => {
+                const nuovoItem = {};
+                const errori = [];
+
+                for (const campo of campi) {
+                    const el = document.getElementById(`campo_${campo.nome}`);
+                    const valore = el ? el.value.trim() : "";
+
+                    if (!valore) {
+                        errori.push(`Il campo "${campo.etichetta}" è obbligatorio`);
+                    }
+
+                    // Validazione EMAIL
+                    if (campo.tipo === "email" && valore) {
+                        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valore);
+                        if (!emailOk)
+                            errori.push(
+                                `Il campo "${campo.etichetta}" non è un'email valida`,
+                            );
+                    }
+
+                    nuovoItem[campo.nome] =
+                        campo.tipo === "select" ? parseInt(valore) : valore;
+                }
+
+                if (errori.length) {
+                    document.getElementById("errori-form").innerHTML = errori
+                        .map((e) => `<div class="errore-campo">⚠️ ${e}</div>`)
+                        .join("");
+                    return false;
+                }
+
+                try {
+                    if (isModifica) {
+                        Object.assign(elemento, nuovoItem);
+                        await chiamataApi(
+                            `${config.endpoint}/${elemento.id}`,
+                            "PUT",
+                            elemento,
+                        );
+                    } else {
+                        const nuovo = config.nuovoElemento(nuovoItem);
+                        const creato = await chiamataApi(config.endpoint, "POST", nuovo);
+                        config.dati().push(creato);
+                    }
+
+                    aggiornaIndicatori();
+                    renderizzaDashboard();
+                    return true;
+                } catch (errore) {
+                    mostraNotifica(
+                        `❌ Errore salvataggio: ${errore.message}`,
+                        "errore",
+                    );
+                    return false;
+                }
+            };
+
+            document.getElementById("sfondo-modale").classList.add("apri");
+        }
+
+        function chiudiModale() {
+            document.getElementById("sfondo-modale").classList.remove("apri");
+            document.getElementById("salva-modale").style.display = ""; // <- ripristina
+            callbackSalvataggio = null;
+        }
+
+        const TITOLI = {
+            articoli: "Articoli",
+            commenti: "Commenti",
+            utenti: "Utenti",
+            ruoli: "Ruoli",
+            "cestino-articoli": "🗑️ Cestino Articoli",
+            "cestino-commenti": "🗑️ Cestino Commenti",
+            "cestino-utenti": "🗑️ Cestino Utenti",
+            "cestino-ruoli": "🗑️ Cestino Ruoli",
+        };
+
+        // =========================
+        // EVENTI: ONE-TIME + ABORT PER RENDER
+        // =========================
+        function attaccaEventiGenerici(tipo, cestino) {
+            const config = CONFIGURAZIONE_SEZIONI[tipo];
+            const area = document.getElementById("area-contenuto");
+
+            // Aborta i listener del render precedente (evita duplicazioni)
+            if (area._abortController) area._abortController.abort();
+            area._abortController = new AbortController();
+            const { signal } = area._abortController;
+
+            // Delegation click (paginazione + crud + ricerca + nuovo)
+            area.addEventListener(
+                "click",
+                async (e) => {
+                    const btnPrec = e.target.closest("#pulsante-prec");
+                    const btnSucc = e.target.closest("#pulsante-succ");
+                    const btnNumero = e.target.closest(".numero-pagina");
+                    const btnAzione = e.target.closest("[data-azione]");
+                    const btnCerca = e.target.closest("#pulsante-cerca");
+                    const btnReset = e.target.closest("#pulsante-reset-cerca");
+                    const btnNuovo = e.target.closest("#pulsante-nuovo");
+
+                    // ignora click su bottoni disabilitati (delegation)
+                    if (btnPrec && btnPrec.disabled) return;
+                    if (btnSucc && btnSucc.disabled) return;
+
+                    // RICERCA
+                    if (btnCerca) {
+                        const valore =
+                            document.getElementById("campo-ricerca")?.value.trim() || "";
+                        if (valore.length === 0) stato.ricerca = "";
+                        else if (valore.length >= 3) stato.ricerca = valore;
+                        else {
+                            mostraNotifica("Minimo 3 caratteri", "errore");
+                            return;
+                        }
+
+                        stato.pagina = 1;
+                        renderizzaDashboard();
+                        return;
+                    }
+
+                    if (btnReset) {
+                        const campo = document.getElementById("campo-ricerca");
+                        if (campo) campo.value = "";
+                        stato.ricerca = "";
+                        stato.pagina = 1;
+                        renderizzaDashboard();
+                        return;
+                    }
+
+                    // NUOVO
+                    if (btnNuovo) {
+                        apriModaleGenerico(tipo, null);
+                        return;
+                    }
+
+                    // PAGINAZIONE
+                    if (btnPrec) {
+                        if (stato.pagina > 1) {
+                            stato.pagina--;
+                            renderizzaDashboard();
+                        }
+                        return;
+                    }
+
+                    if (btnSucc) {
+                        const elementi = ottieniElementiFiltrati(tipo, cestino);
+                        const pagineTotali = Math.max(
+                            1,
+                            Math.ceil(elementi.length / stato.elementiPerPagina),
+                        );
+                        if (stato.pagina < pagineTotali) {
+                            stato.pagina++;
+                            renderizzaDashboard();
+                        }
+                        return;
+                    }
+
+                    if (btnNumero) {
+                        const nuovaPagina = parseInt(btnNumero.dataset.pagina);
+                        if (!isNaN(nuovaPagina)) {
+                            stato.pagina = nuovaPagina;
+                            renderizzaDashboard();
+                        }
+                        return;
+                    }
+
+                    // CRUD - delete, modifica, ripristina
+                    if (!btnAzione) return;
+                    if (stato.caricamento) return;
+
+                    const id = parseInt(btnAzione.dataset.id);
+                    const azione = btnAzione.dataset.azione;
+
+                    const lista = config.dati();
+                    const elemento = lista.find((x) => x.id === id);
+
+                    if (azione === "vedi") {
+                        mostraArticoloCompleto(elemento);
+                        return;
+                    }
+
+                    if (azione === "modifica") {
+                        apriModaleGenerico(tipo, elemento);
+                        return;
+                    }
+
+                    if (azione === "elimina-logico") {
+                        const confermato = await mostraPopupConferma(
+                            "Sposta nel cestino",
+                            "Vuoi spostare questo elemento nel cestino?",
+                            "🗑️ Sposta",
+                        );
+                        if (!confermato) return;
+                    }
+
+                    if (azione === "elimina-definitivo") {
+                        const confermato = await mostraPopupConferma(
+                            "Eliminazione definitiva",
+                            "Questa operazione è irreversibile",
+                            "💀 Elimina",
+                            true,
+                        );
+                        if (!confermato) return;
+                    }
+
+                    stato.operazioneFallita = { tipo, azione, id, elemento, config };
+
+                    impostaCaricamento(true);
+                    mostraNotifica("⏳ Operazione in corso...", "caricamento");
+
+                    try {
+                        if (azione === "elimina-logico") {
+                            elemento.isActive = false;
+                            await chiamataApi(`${config.endpoint}/${id}`, "PUT", elemento);
+                        }
+
+                        if (azione === "ripristina") {
+                            elemento.isActive = true;
+                            await chiamataApi(`${config.endpoint}/${id}`, "PUT", elemento);
+                        }
+
+                        if (azione === "elimina-definitivo") {
+                            await chiamataApi(`${config.endpoint}/${id}`, "DELETE");
+                            const index = lista.findIndex((x) => x.id === id);
+                            if (index !== -1) lista.splice(index, 1);
+                        }
+
+                        stato.operazioneFallita = null;
+                        aggiornaIndicatori();
+                        renderizzaDashboard();
+                        mostraNotifica("✓ Operazione completata", "successo");
+                    } catch (errore) {
+                        stato.ultimoErrore = errore;
+                        mostraNotifica(`❌ ${errore.message}`, "errore");
+                        mostraBottoneRetry();
+                    } finally {
+                        impostaCaricamento(false);
+                    }
+                },
+                { signal },
+            );
+
+            // FILTRI
+            config.filtri.forEach((filtro) => {
+                document.getElementById(filtro.id)?.addEventListener(
+                    "change",
+                    (e) => {
+                        stato.filtri[filtro.campo] = e.target.value;
+                        stato.pagina = 1;
+                        renderizzaDashboard();
+                    },
+                    { signal },
+                );
+            });
+
+            // SELECT ELEMENTI PER PAGINA
+            document.getElementById("selettore-pagina")?.addEventListener(
+                "change",
+                (e) => {
+                    stato.elementiPerPagina = parseInt(e.target.value);
+                    stato.pagina = 1;
+                    renderizzaDashboard();
+                },
+                { signal },
+            );
+        }
+
+        function renderizzaSezione(tipo, cestino) {
+            const config = CONFIGURAZIONE_SEZIONI[tipo];
+
+            const elementi = ottieniElementiFiltrati(tipo, cestino);
+            const pagineTotali = correggiPaginazione(elementi.length);
+            const elementiPagina = paginaElementi(
+                elementi,
+                stato.pagina,
+                stato.elementiPerPagina,
+            );
+            const stats = config.statistiche(config.dati());
+
+            const filtriHtml = config.filtri
+                .map((filtro) => {
+                    const opzioni = filtro.opzioni();
+                    const selected = stato.filtri[filtro.campo] || "";
+                    return `<select id="${filtro.id}" class="filtro-select">
+        <option value="">${filtro.etichetta}</option>
+        ${opzioni.map((opt) => `<option value="${opt.valore}" ${selected == opt.valore ? "selected" : ""}>${opt.testo}</option>`).join("")}
+      </select>`;
+                })
+                .join("");
+
+            let html = ` `;
+
+            if (cestino) {
+                html += `<div class="avviso-cestino">⚠️ Cestino — elementi eliminati. Puoi ripristinarli o cancellarli definitivamente.</div>`;
+            }
+
+            html += `
+      <div class="barra-strumenti">
+        <div class="contenitore-ricerca" style="display: flex; gap: 8px; flex: 1;">
+          <input type="text" id="campo-ricerca" placeholder="Cerca ${config.nome} (minimo 3 caratteri)..." value="${stato.ricerca}" style="flex: 1;">
+          <button class="pulsante" id="pulsante-cerca">🔍 Cerca</button>
+          <button class="pulsante" id="pulsante-reset-cerca" style="display: ${stato.ricerca ? "inline-block" : "none"};">✕ Reset</button>
+        </div>
+        ${filtriHtml}
+        ${!cestino ? `<button class="pulsante pulsante-primario" id="pulsante-nuovo">+ Nuovo ${config.nomeSingolare}</button>` : ""}
+      </div>`;
+
+            if (stato.ricerca && stato.ricerca.length >= 3) {
+                html += `<div class="avviso-cestino" style="background: #e6f4ea; border-color: #b3e0b3; color: #1e7e34; margin-bottom: 15px;">
+        🔍 Ricerca attiva: "${stato.ricerca}" - ${elementi.length} risultati trovati
+      </div>`;
+            }
+
+            if (elementi.length === 0) {
+                html += `<div class="stato-vuoto">📭 Nessun elemento trovato${stato.ricerca && stato.ricerca.length >= 3 ? ` per "${stato.ricerca}"` : ""}</div>`;
+            } else {
+                html += `<div class="contenitore-tabella"><table><thead><tr>`;
+                config.colonne.forEach(
+                    (col) =>
+                        (html += `<th style="width:${col.larghezza}">${col.campo}</th>`),
+                );
+                html += `<th style="width:20%">Azioni</th></tr></thead><tbody>`;
+
+                elementiPagina.forEach((item) => {
+                    html += `<tr>`;
+                    config.colonne.forEach(
+                        (col) =>
+                            (html += `<td>${col.funzione(item, stato.ricerca)}</td>`),
+                    );
+
+                    html += `<td>
+          <div class="azioni-colonna">
+             ${(!cestino && tipo === "articoli")
+                            ? `<button class="pulsante pulsante-piccolo" data-azione="vedi" data-id="${item.id}">👁️ Vedi</button>`
+                            : ""}
+
+  ${!cestino ? `<button class="pulsante pulsante-piccolo" data-azione="modifica" data-id="${item.id}">✏️ Modifica</button>` : ""}
+            ${!cestino ? `<button class="pulsante pulsante-piccolo pulsante-pericolo" data-azione="elimina-logico" data-id="${item.id}">🗑️ Elimina</button>` : ""}
+            ${cestino ? `<button class="pulsante pulsante-piccolo pulsante-successo" data-azione="ripristina" data-id="${item.id}">🔄 Ripristina</button>` : ""}
+            ${cestino ? `<button class="pulsante pulsante-piccolo pulsante-pericolo" data-azione="elimina-definitivo" data-id="${item.id}">💀 Cancella</button>` : ""}
+          </div>
+        </td>`;
+                    html += `</tr>`;
+                });
+
+                html += `</tbody></table></div>`;
+                html += generaPaginazione(
+                    elementi.length,
+                    stato.pagina,
+                    pagineTotali,
+                );
+            }
+
+            document.getElementById("area-contenuto").innerHTML = html;
+            attaccaEventiGenerici(tipo, cestino);
+        }
+
+        function renderizzaDashboard() {
+            stato.pagina = Math.max(1, parseInt(stato.pagina) || 1);
+
+            const isCestino = stato.sezione.startsWith("cestino-");
+            const tipoBase = isCestino
+                ? stato.sezione.replace("cestino-", "")
+                : stato.sezione;
+
+            renderizzaSezione(tipoBase, isCestino);
+        }
+
+        function paginaElementi(array, pagina, perPagina) {
+            return array.slice((pagina - 1) * perPagina, pagina * perPagina);
+        }
+
+        // MENU LATERALE
+        document.querySelectorAll(".voce-menu").forEach((voce) => {
+            voce.addEventListener("click", () => {
+                if (stato.caricamento) return;
+
+                stato.sezione = voce.dataset.sezione;
+                stato.pagina = 1;
+                stato.ricerca = "";
+                stato.filtri = {};
+                stato.operazioneFallita = null;
+
+                document
+                    .querySelectorAll(".voce-menu")
+                    .forEach((v) => v.classList.remove("attivo"));
+                voce.classList.add("attivo");
+
+                document.getElementById("titolo-pagina").textContent =
+                    TITOLI[stato.sezione] || stato.sezione;
+                renderizzaDashboard();
+            });
+        });
+
+        // MODALE
+        document.getElementById("chiusura-modale").onclick = chiudiModale;
+        document.getElementById("annulla-modale").onclick = chiudiModale;
+        document.getElementById("sfondo-modale").onclick = (e) => {
+            if (e.target === document.getElementById("sfondo-modale"))
+                chiudiModale();
+        };
+
+        document.getElementById("salva-modale").onclick = async () => {
+            if (!callbackSalvataggio || stato.caricamento) return;
+
+            const btn = document.getElementById("salva-modale");
+            impostaCaricamento(true);
+            btn.textContent = "Salvataggio...";
+
+            try {
+                const ok = await callbackSalvataggio();
+                if (ok) {
+                    chiudiModale();
+                    mostraNotifica("✓ Operazione completata con successo", "successo");
+                }
+            } catch (err) {
+                mostraNotifica(`❌ Errore: ${err.message}`, "errore");
+            } finally {
+                impostaCaricamento(false);
+                btn.textContent = "Salva";
+            }
+        };
+
+        async function caricaDati() {
+            document.getElementById("area-contenuto").innerHTML =
+                `<div class="stato-caricamento"><span class="spinner"></span> Caricamento dati in corso...</div>`;
+            impostaCaricamento(true);
+            mostraNotifica("⏳ Connessione al server...", "caricamento");
+
+            try {
+                const [articoli, commenti, utenti, ruoli] = await Promise.all([
+                    chiamataApi("posts"),
+                    chiamataApi("comments"),
+                    chiamataApi("users"),
+                    chiamataApi("roles"),
+                ]);
+
+                datiGlobali.articoli = articoli;
+                datiGlobali.commenti = commenti;
+                datiGlobali.utenti = utenti;
+                datiGlobali.ruoli = ruoli;
+
+                stato.pagina = 1;
+
+                aggiornaIndicatori();
+                renderizzaDashboard();
+
+                rimuoviNotifica();
+                mostraNotifica("✓ Dati caricati con successo", "successo");
+            } catch (errore) {
+                document.getElementById("area-contenuto").innerHTML =
+                    `<div class="stato-errore">❌ <strong>Errore di connessione</strong><br><br>${errore.message}<br><br>
+          <button class="pulsante pulsante-retry" id="bottone-ricarica">🔄 Riprova a caricare i dati</button><br><br>          
+        </div>`;
+
+                document
+                    .getElementById("bottone-ricarica")
+                    ?.addEventListener("click", caricaDati);
+                mostraNotifica(`❌ ${errore.message}`, "errore");
+            } finally {
+                impostaCaricamento(false);
+            }
+        }
+
+        caricaDati();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,70 @@
+{
+  "posts": [
+    {
+      "utenteId": 1,
+      "id": 1,
+      "titolo": "Esempio Articolo",
+      "corpo": "Questo è un contenuto dimostrativo serve per testare la visualizzazione",
+      "isActive": true,
+      "creatoIl": "2024-01-15"
+    },
+    {
+      "utenteId": 2,
+      "id": 2,
+      "titolo": "Esempio contenuto variante",
+      "corpo": "Testo generico alternativo prova la visualizzazione del post\nprova prova\nprova prova 2",
+      "isActive": true,
+      "creatoIl": "2024-01-16"
+    }
+  ],
+  "comments": [
+    {
+      "postId": 1,
+      "nome": "luigi",
+      "email": "luigi@test.com",
+      "corpo": "commento prova prova 1",
+      "isActive": true,
+      "id": 4
+    },
+    {
+      "postId": 2,
+      "nome": "mario",
+      "email": "mario@test.com",
+      "corpo": "super mario commento prova",
+      "isActive": true,
+      "id": 5
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "nome": "Mario Bros",
+      "username": "supermario",
+      "email": "mario@test.com",
+      "ruoloId": 1,
+      "isActive": true
+    },
+    {
+      "id": 2,
+      "nome": "Luigi Bros",
+      "username": "luigi",
+      "email": "luigi@test.com",
+      "ruoloId": 2,
+      "isActive": true
+    }
+  ],
+  "roles": [
+    {
+      "id": 1,
+      "nome": "Admin",
+      "descrizione": "Accesso completo",
+      "isActive": true
+    },
+    {
+      "id": 2,
+      "nome": "Editor",
+      "descrizione": "Gestione contenuti",
+      "isActive": true
+    }
+  ]
+}
